@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ActivityType, Day, TimerSession } from './types';
+import { AppHeader } from './components/AppHeader';
 import { ConsentModal } from './components/ConsentModal';
 import { RecoveryCodeStep } from './components/RecoveryCodeStep';
 import { StartTimeModal } from './components/StartTimeModal';
@@ -150,8 +151,11 @@ function Tracker() {
   if (screen === 'startTime') {
     return (
       <div>
-        <button type="button" onClick={() => setScreen('history')}>History</button>
-        <button type="button" onClick={() => setScreen('settings')}>Settings</button>
+        <AppHeader
+          recoveryCode={settings.recoveryCode}
+          onOpenHistory={() => setScreen('history')}
+          onOpenSettings={() => setScreen('settings')}
+        />
         <StartTimeModal defaultTime={new Date().toISOString()} onConfirm={(startedAt) => { dayState.startDay(startedAt); setScreen('main'); }} />
       </div>
     );
@@ -202,8 +206,11 @@ function Tracker() {
   if (dayState.day) {
     return (
       <div>
-        <button type="button" onClick={() => setScreen('history')}>History</button>
-        <button type="button" onClick={() => setScreen('settings')}>Settings</button>
+        <AppHeader
+          recoveryCode={settings.recoveryCode}
+          onOpenHistory={() => setScreen('history')}
+          onOpenSettings={() => setScreen('settings')}
+        />
         <MainScreen
           day={dayState.day}
           onTap={handleTap}
@@ -215,7 +222,16 @@ function Tracker() {
     );
   }
 
-  return <StartTimeModal defaultTime={new Date().toISOString()} onConfirm={(startedAt) => { dayState.startDay(startedAt); setScreen('main'); }} />;
+  return (
+    <div>
+      <AppHeader
+        recoveryCode={settings.recoveryCode}
+        onOpenHistory={() => setScreen('history')}
+        onOpenSettings={() => setScreen('settings')}
+      />
+      <StartTimeModal defaultTime={new Date().toISOString()} onConfirm={(startedAt) => { dayState.startDay(startedAt); setScreen('main'); }} />
+    </div>
+  );
 }
 
 export default App;

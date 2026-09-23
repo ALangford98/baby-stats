@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ActivityConfig } from '../activities';
 import type { TimerLog, TimerSession } from '../types';
 import { fromLocalInputValue, toLocalInputValue } from '../utils/time';
+import { Dialog } from './Dialog';
 
 type EditTimerModalProps = {
   config: ActivityConfig;
@@ -27,9 +28,9 @@ export function EditTimerModal({ config, log, onSave, onClose }: EditTimerModalP
   }
 
   return (
-    <div role="dialog" aria-label={`Edit ${config.label}`}>
+    <Dialog label={`Edit ${config.label}`} onClose={onClose}>
       {sessions.map((session, index) => (
-        <div key={index}>
+        <div key={index} className="timer-session-row">
           <label htmlFor={`start-${index}`}>Start {index + 1}</label>
           <input
             id={`start-${index}`}
@@ -60,6 +61,6 @@ export function EditTimerModal({ config, log, onSave, onClose }: EditTimerModalP
       <button type="button" onClick={onClose}>
         Cancel
       </button>
-    </div>
+    </Dialog>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ActivityConfig } from '../activities';
 import type { CounterLog } from '../types';
+import { Dialog } from './Dialog';
 
 type EditCounterModalProps = {
   config: ActivityConfig;
@@ -13,7 +14,7 @@ export function EditCounterModal({ config, log, onSave, onClose }: EditCounterMo
   const [value, setValue] = useState(String(log.count));
 
   return (
-    <div role="dialog" aria-label={`Edit ${config.label}`}>
+    <Dialog label={`Edit ${config.label}`} onClose={onClose}>
       <label htmlFor="counter-input">{config.label} count</label>
       <input
         id="counter-input"
@@ -28,6 +29,6 @@ export function EditCounterModal({ config, log, onSave, onClose }: EditCounterMo
       <button type="button" onClick={onClose}>
         Cancel
       </button>
-    </div>
+    </Dialog>
   );
 }

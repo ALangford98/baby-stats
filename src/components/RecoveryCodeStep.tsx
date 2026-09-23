@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Dialog } from './Dialog';
 
 type RecoveryCodeStepProps = {
   recoveryCode: string;
@@ -12,7 +13,7 @@ export function RecoveryCodeStep({ recoveryCode, onContinueFresh, onUseExistingC
 
   if (showEntry) {
     return (
-      <div>
+      <Dialog label="Restore from another device">
         <label htmlFor="recovery-code-input">Recovery code</label>
         <input id="recovery-code-input" value={entered} onChange={(e) => setEntered(e.target.value)} />
         <button type="button" onClick={() => onUseExistingCode(entered.trim())}>
@@ -21,12 +22,12 @@ export function RecoveryCodeStep({ recoveryCode, onContinueFresh, onUseExistingC
         <button type="button" onClick={() => setShowEntry(false)}>
           Back
         </button>
-      </div>
+      </Dialog>
     );
   }
 
   return (
-    <div>
+    <Dialog label="Get started">
       <p>Your recovery code:</p>
       <strong>{recoveryCode}</strong>
       <p>Save this to restore your data on another device. Don't share it — anyone with this code can access your data.</p>
@@ -36,6 +37,6 @@ export function RecoveryCodeStep({ recoveryCode, onContinueFresh, onUseExistingC
       <button type="button" onClick={() => setShowEntry(true)}>
         I already have a code
       </button>
-    </div>
+    </Dialog>
   );
 }

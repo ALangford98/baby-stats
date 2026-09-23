@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { LlmProvider, Settings } from '../types';
+import { Dialog } from './Dialog';
 
 type SettingsScreenProps = {
   settings: Settings;
@@ -18,7 +19,7 @@ export function SettingsScreen({ settings, onUpdate, onClose, onEnterRecoveryCod
   }, [settings.llmApiKey]);
 
   return (
-    <div>
+    <Dialog label="Settings" onClose={onClose}>
       <button type="button" onClick={onClose}>
         Close
       </button>
@@ -54,6 +55,6 @@ export function SettingsScreen({ settings, onUpdate, onClose, onEnterRecoveryCod
         Switch code
       </button>
       {restoreError && <p role="alert">{restoreError}</p>}
-    </div>
+    </Dialog>
   );
 }

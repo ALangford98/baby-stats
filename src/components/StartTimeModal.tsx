@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { fromLocalInputValue, toLocalInputValue } from '../utils/time';
+import { Dialog } from './Dialog';
 
 type StartTimeModalProps = {
   defaultTime: string; // ISO
@@ -22,7 +23,7 @@ export function StartTimeModal({ defaultTime, onConfirm }: StartTimeModalProps) 
   };
 
   return (
-    <div>
+    <Dialog label="New day">
       <label htmlFor="start-time-input">Start time</label>
       <input
         id="start-time-input"
@@ -33,6 +34,6 @@ export function StartTimeModal({ defaultTime, onConfirm }: StartTimeModalProps) 
       <button type="button" onClick={handleConfirm}>
         Confirm
       </button>
-    </div>
+    </Dialog>
   );
 }

@@ -1,11 +1,34 @@
-export type ActivityType =
-  | 'lightDiaper'
-  | 'mediumDiaper'
-  | 'heavyDiaper'
-  | 'spitUp'
-  | 'nap'
-  | 'tummyTime'
-  | 'cryingFit';
+export type ActivityType = string;
+
+export type ActivityKind = 'counter' | 'timer';
+
+export type IconName =
+  | 'Droplet'
+  | 'Droplets'
+  | 'CloudRain'
+  | 'Waves'
+  | 'Moon'
+  | 'Baby'
+  | 'AlertTriangle'
+  | 'Utensils'
+  | 'Milk'
+  | 'Pill'
+  | 'Bath'
+  | 'Smile'
+  | 'Heart'
+  | 'Star'
+  | 'Clock'
+  | 'Thermometer'
+  | 'Stethoscope'
+  | 'BookOpen'
+  | 'Music';
+
+export type ActivityConfig = {
+  type: ActivityType;
+  label: string;
+  kind: ActivityKind;
+  icon: IconName;
+};
 
 export type CounterLog = {
   kind: 'counter';
@@ -27,7 +50,7 @@ export type TimerLog = {
 export type ActivityLog = CounterLog | TimerLog;
 
 export type Day = {
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD, local calendar date
   startedAt: string; // ISO timestamp
   endedAt: string | null; // ISO timestamp
   logs: Record<ActivityType, ActivityLog>;
@@ -41,4 +64,5 @@ export type Settings = {
   recoveryCode: string;
   llmProvider: LlmProvider | null;
   llmApiKey: string | null;
+  customActivities: ActivityConfig[];
 };

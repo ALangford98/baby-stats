@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SettingsScreen } from './SettingsScreen';
 import type { Settings } from '../types';
 
-const settings: Settings = { recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null };
+const settings: Settings = { recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] };
 
 describe('SettingsScreen', () => {
   it('shows the recovery code', () => {

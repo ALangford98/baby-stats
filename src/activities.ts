@@ -1,13 +1,6 @@
-import type { ActivityType } from './types';
+import type { ActivityConfig, IconName } from './types';
 
-export type ActivityKind = 'counter' | 'timer';
-
-export type ActivityConfig = {
-  type: ActivityType;
-  label: string;
-  kind: ActivityKind;
-  icon: 'Droplet' | 'Droplets' | 'CloudRain' | 'Waves' | 'Moon' | 'Baby' | 'AlertTriangle';
-};
+export type { ActivityConfig, ActivityKind } from './types';
 
 export const ACTIVITIES: ActivityConfig[] = [
   { type: 'lightDiaper', label: 'Light Diaper', kind: 'counter', icon: 'Droplet' },
@@ -18,3 +11,22 @@ export const ACTIVITIES: ActivityConfig[] = [
   { type: 'tummyTime', label: 'Tummy Time', kind: 'timer', icon: 'Baby' },
   { type: 'cryingFit', label: 'Crying Fit', kind: 'timer', icon: 'AlertTriangle' },
 ];
+
+export const ICON_OPTIONS: IconName[] = [
+  'Utensils',
+  'Milk',
+  'Pill',
+  'Bath',
+  'Smile',
+  'Heart',
+  'Star',
+  'Clock',
+  'Thermometer',
+  'Stethoscope',
+  'BookOpen',
+  'Music',
+];
+
+export function combineActivities(customActivities: ActivityConfig[]): ActivityConfig[] {
+  return [...ACTIVITIES, ...customActivities];
+}

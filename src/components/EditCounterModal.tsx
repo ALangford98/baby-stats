@@ -8,9 +8,10 @@ type EditCounterModalProps = {
   log: CounterLog;
   onSave: (count: number) => void;
   onClose: () => void;
+  onDelete?: () => void;
 };
 
-export function EditCounterModal({ config, log, onSave, onClose }: EditCounterModalProps) {
+export function EditCounterModal({ config, log, onSave, onClose, onDelete }: EditCounterModalProps) {
   const [value, setValue] = useState(String(log.count));
 
   return (
@@ -29,6 +30,18 @@ export function EditCounterModal({ config, log, onSave, onClose }: EditCounterMo
       <button type="button" onClick={onClose}>
         Cancel
       </button>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm(`Delete the "${config.label}" button? This does not delete anything already logged.`)) {
+              onDelete();
+            }
+          }}
+        >
+          Delete this button
+        </button>
+      )}
     </Dialog>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ACTIVITIES } from '../activities';
-import type { ActivityType, CounterLog, Day, TimerLog, TimerSession } from '../types';
+import type { ActivityConfig, ActivityType, CounterLog, Day, TimerLog, TimerSession } from '../types';
+import { AddActivityButton } from './AddActivityButton';
+import { AddActivityDialog } from './AddActivityDialog';
 import { ActivityButton } from './ActivityButton';
 import { EditCounterModal } from './EditCounterModal';
 import { EditTimerModal } from './EditTimerModal';
@@ -8,21 +9,35 @@ import './MainScreen.css';
 
 type MainScreenProps = {
   day: Day;
+  activities: ActivityConfig[];
   onTap: (type: ActivityType) => void;
   onEditCounter: (type: ActivityType, count: number) => void;
   onEditTimer: (type: ActivityType, sessions: TimerSession[]) => void;
   onEndDay: () => void;
+  onAddActivity: (activity: ActivityConfig) => void;
+  onDeleteActivity: (type: ActivityType) => void;
 };
 
-export function MainScreen({ day, onTap, onEditCounter, onEditTimer, onEndDay }: MainScreenProps) {
+export function MainScreen({
+  day,
+  activities,
+  onTap,
+  onEditCounter,
+  onEditTimer,
+  onEndDay,
+  onAddActivity,
+  onDeleteActivity,
+}: MainScreenProps) {
   const [editingType, setEditingType] = useState<ActivityType | null>(null);
-  const editingConfig = ACTIVITIES.find((a) => a.type === editingType) ?? null;
+  const [addingActivity, setAddingActivity] = useState(false);
+  const editingConfig = activities.find((a) => a.type === editingType) ?? null;
   const editingLog = editingType ? day.logs[editingType] : null;
+  const isCustom = (type: ActivityType) => type.startsWith('custom-');
 
   return (
     <div>
       <div className="main-screen__grid">
-        {ACTIVITIES.map((activity) => (
+        {activities.map((activity) => (
           <ActivityButton
             key={activity.type}
             config={activity}
@@ -31,6 +46,7 @@ export function MainScreen({ day, onTap, onEditCounter, onEditTimer, onEndDay }:
             onEdit={() => setEditingType(activity.type)}
           />
         ))}
+        <AddActivityButton onClick={() => setAddingActivity(true)} />
       </div>
       <button type="button" className="main-screen__end-day" onClick={onEndDay}>
         End Day
@@ -44,6 +60,14 @@ export function MainScreen({ day, onTap, onEditCounter, onEditTimer, onEndDay }:
             setEditingType(null);
           }}
           onClose={() => setEditingType(null)}
+          onDelete={
+            isCustom(editingConfig.type)
+              ? () => {
+                  onDeleteActivity(editingConfig.type);
+                  setEditingType(null);
+                }
+              : undefined
+          }
         />
       )}
       {editingConfig && editingLog?.kind === 'timer' && (
@@ -55,6 +79,23 @@ export function MainScreen({ day, onTap, onEditCounter, onEditTimer, onEndDay }:
             setEditingType(null);
           }}
           onClose={() => setEditingType(null)}
+          onDelete={
+            isCustom(editingConfig.type)
+              ? () => {
+                  onDeleteActivity(editingConfig.type);
+                  setEditingType(null);
+                }
+              : undefined
+          }
+        />
+      )}
+      {addingActivity && (
+        <AddActivityDialog
+          onAdd={(activity) => {
+            onAddActivity(activity);
+            setAddingActivity(false);
+          }}
+          onClose={() => setAddingActivity(false)}
         />
       )}
     </div>

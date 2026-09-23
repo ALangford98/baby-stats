@@ -49,4 +49,23 @@ describe('EditTimerModal', () => {
     expect(saved).toHaveLength(1);
     expect(saved[0].end).toBe('2026-09-23T09:30:00.000Z');
   });
+
+  it('shows no delete action when onDelete is not provided (built-in activity)', () => {
+    const log: TimerLog = { kind: 'timer', type: 'nap', sessions: [] };
+    render(<EditTimerModal config={config} log={log} onSave={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /delete this button/i })).not.toBeInTheDocument();
+  });
+
+  it('deletes after confirmation when onDelete is provided (custom activity)', async () => {
+    const log: TimerLog = { kind: 'timer', type: 'custom-def67890', sessions: [] };
+    const customConfig = { type: 'custom-def67890', label: 'Screen time', kind: 'timer' as const, icon: 'Star' as const };
+    const onDelete = vi.fn();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<EditTimerModal config={customConfig} log={log} onSave={vi.fn()} onClose={vi.fn()} onDelete={onDelete} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /delete this button/i }));
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
+  });
 });

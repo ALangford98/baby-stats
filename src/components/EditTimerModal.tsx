@@ -9,9 +9,10 @@ type EditTimerModalProps = {
   log: TimerLog;
   onSave: (sessions: TimerSession[]) => void;
   onClose: () => void;
+  onDelete?: () => void;
 };
 
-export function EditTimerModal({ config, log, onSave, onClose }: EditTimerModalProps) {
+export function EditTimerModal({ config, log, onSave, onClose, onDelete }: EditTimerModalProps) {
   const [sessions, setSessions] = useState<TimerSession[]>(log.sessions);
 
   function updateSession(index: number, patch: Partial<TimerSession>) {
@@ -61,6 +62,18 @@ export function EditTimerModal({ config, log, onSave, onClose }: EditTimerModalP
       <button type="button" onClick={onClose}>
         Cancel
       </button>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm(`Delete the "${config.label}" button? This does not delete anything already logged.`)) {
+              onDelete();
+            }
+          }}
+        >
+          Delete this button
+        </button>
+      )}
     </Dialog>
   );
 }

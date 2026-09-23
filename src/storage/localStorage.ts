@@ -20,7 +20,11 @@ function parseOr<T>(raw: string | null, fallback: T): T {
 }
 
 export function loadSettings(): Settings | null {
-  return parseOr<Settings | null>(localStorage.getItem(KEYS.settings), null);
+  const settings = parseOr<Settings | null>(localStorage.getItem(KEYS.settings), null);
+  if (settings === null) return null;
+  // A settings object saved before customActivities existed has no such
+  // field at all — default it rather than letting it stay undefined.
+  return { ...settings, customActivities: settings.customActivities ?? [] };
 }
 
 export function saveSettings(settings: Settings): void {

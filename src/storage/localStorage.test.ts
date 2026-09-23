@@ -8,6 +8,7 @@ import {
   saveSettings,
 } from './localStorage';
 import { createEmptyDay } from '../domain/day';
+import { ACTIVITIES } from '../activities';
 import type { Settings } from '../types';
 
 beforeEach(() => {
@@ -20,9 +21,14 @@ describe('settings round-trip', () => {
   });
 
   it('saves and reloads settings', () => {
-    const settings: Settings = { recoveryCode: 'ABCD123456', llmProvider: 'anthropic', llmApiKey: 'sk-test' };
+    const settings: Settings = { recoveryCode: 'ABCD123456', llmProvider: 'anthropic', llmApiKey: 'sk-test', customActivities: [] };
     saveSettings(settings);
     expect(loadSettings()).toEqual(settings);
+  });
+
+  it('defaults customActivities to [] when loading settings saved before this field existed', () => {
+    localStorage.setItem('babystats:settings', JSON.stringify({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null }));
+    expect(loadSettings()).toEqual({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
   });
 });
 
@@ -32,7 +38,7 @@ describe('currentDay round-trip', () => {
   });
 
   it('saves, reloads, and clears the current day', () => {
-    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES);
     saveCurrentDay(day);
     expect(loadCurrentDay()).toEqual(day);
     saveCurrentDay(null);
@@ -46,7 +52,7 @@ describe('history round-trip', () => {
   });
 
   it('saves and reloads history', () => {
-    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES);
     saveHistory([day]);
     expect(loadHistory()).toEqual([day]);
   });

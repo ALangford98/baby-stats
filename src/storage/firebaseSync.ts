@@ -1,20 +1,31 @@
 import { signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirebaseServices } from './firebaseClient';
-import type { Day } from '../types';
+import type { ActivityConfig, Day } from '../types';
 
-export type SyncedData = { currentDay: Day | null; history: Day[] };
+export type SyncedData = { currentDay: Day | null; history: Day[]; customActivities: ActivityConfig[] };
 
 // A remote document can be missing fields or be outright malformed. Passing
 // that through would let `undefined` reach `saveCurrentDay`/`saveHistory`,
 // which store the literal string "undefined" — and every later launch would
 // then throw inside a `useState` initializer, bricking the app for good.
-function isSyncedData(value: unknown): value is SyncedData {
+//
+// `customActivities` is validated separately from the rest: a document
+// written before this field existed has none at all, and that must still be
+// treated as valid (defaulting to `[]`) rather than rejected as malformed —
+// otherwise shipping this feature would suddenly break every pre-existing
+// synced document.
+function isSyncedDataShape(value: unknown): value is { currentDay: unknown; history: unknown[] } {
   if (typeof value !== 'object' || value === null) return false;
   const { currentDay, history } = value as { currentDay?: unknown; history?: unknown };
   if (!Array.isArray(history)) return false;
   if (currentDay === null) return true;
   return typeof currentDay === 'object' && currentDay !== null && 'logs' in currentDay;
+}
+
+function validCustomActivities(value: unknown): ActivityConfig[] | null {
+  if (value === undefined) return [];
+  return Array.isArray(value) ? (value as ActivityConfig[]) : null;
 }
 
 export async function ensureAnonymousAuth(): Promise<void> {
@@ -31,8 +42,10 @@ export async function fetchSyncedData(recoveryCode: string): Promise<SyncedData 
   const snapshot = await getDoc(doc(services.db, 'users', recoveryCode));
   if (!snapshot.exists()) return null;
   const data: unknown = snapshot.data();
-  if (!isSyncedData(data)) return null;
-  return data;
+  if (!isSyncedDataShape(data)) return null;
+  const customActivities = validCustomActivities((data as { customActivities?: unknown }).customActivities);
+  if (customActivities === null) return null;
+  return { currentDay: data.currentDay as Day | null, history: data.history as Day[], customActivities };
 }
 
 export async function pushSyncedData(recoveryCode: string, data: SyncedData): Promise<void> {
@@ -41,6 +54,7 @@ export async function pushSyncedData(recoveryCode: string, data: SyncedData): Pr
   await setDoc(doc(services.db, 'users', recoveryCode), {
     currentDay: data.currentDay,
     history: data.history,
+    customActivities: data.customActivities,
   });
 }
 
@@ -59,7 +73,9 @@ export function watchSyncedData(recoveryCode: string, onChange: (data: SyncedDat
     if (snapshot.metadata.hasPendingWrites) return;
     if (!snapshot.exists()) return;
     const data: unknown = snapshot.data();
-    if (!isSyncedData(data)) return;
-    onChange(data);
+    if (!isSyncedDataShape(data)) return;
+    const customActivities = validCustomActivities((data as { customActivities?: unknown }).customActivities);
+    if (customActivities === null) return;
+    onChange({ currentDay: data.currentDay as Day | null, history: data.history as Day[], customActivities });
   });
 }

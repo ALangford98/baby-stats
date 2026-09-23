@@ -23,6 +23,7 @@ vi.mock('firebase/firestore', () => ({
 import { ensureAnonymousAuth, fetchSyncedData, pushSyncedData, watchSyncedData } from './firebaseSync';
 import { resetFirebaseServicesForTest } from './firebaseClient';
 import { createEmptyDay } from '../domain/day';
+import type { ActivityConfig } from '../types';
 
 // Firebase is now initialized lazily on first use, so each test decides
 // whether this environment is configured for cloud sync at all.
@@ -60,7 +61,7 @@ describe('fetchSyncedData', () => {
   });
 
   it('returns the stored data when the document exists', async () => {
-    const data = { currentDay: null, history: [] };
+    const data = { currentDay: null, history: [], customActivities: [] };
     getDocMock.mockResolvedValue({ exists: () => true, data: () => data });
     const result = await fetchSyncedData('REALCODE01');
     expect(result).toEqual(data);
@@ -87,20 +88,42 @@ describe('fetchSyncedData', () => {
   });
 
   it('accepts a well-formed document containing a real day', async () => {
-    const data = { currentDay: createEmptyDay('2026-09-23T08:00:00.000Z'), history: [] };
+    const data = { currentDay: createEmptyDay('2026-09-23T08:00:00.000Z', []), history: [], customActivities: [] };
+    getDocMock.mockResolvedValue({ exists: () => true, data: () => data });
+    await expect(fetchSyncedData('REALCODE01')).resolves.toEqual(data);
+  });
+
+  it('defaults customActivities to [] for a remote document written before this feature shipped', async () => {
+    const legacyData = { currentDay: null, history: [] }; // no customActivities field at all
+    getDocMock.mockResolvedValue({ exists: () => true, data: () => legacyData });
+    const result = await fetchSyncedData('REALCODE01');
+    expect(result).toEqual({ currentDay: null, history: [], customActivities: [] });
+  });
+
+  it('rejects a remote document whose customActivities field is present but not an array', async () => {
+    getDocMock.mockResolvedValue({
+      exists: () => true,
+      data: () => ({ currentDay: null, history: [], customActivities: 'not-an-array' }),
+    });
+    await expect(fetchSyncedData('REALCODE01')).resolves.toBeNull();
+  });
+
+  it('accepts and returns a document with a well-formed customActivities list', async () => {
+    const custom: ActivityConfig = { type: 'custom-abc12345', label: 'Tummy medicine', kind: 'counter', icon: 'Pill' };
+    const data = { currentDay: null, history: [], customActivities: [custom] };
     getDocMock.mockResolvedValue({ exists: () => true, data: () => data });
     await expect(fetchSyncedData('REALCODE01')).resolves.toEqual(data);
   });
 });
 
 describe('pushSyncedData', () => {
-  it('writes only currentDay and history, never any settings/API key fields', async () => {
-    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
-    await pushSyncedData('REALCODE01', { currentDay: day, history: [] });
+  it('writes currentDay, history, and customActivities, never any settings/API key fields', async () => {
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', []);
+    await pushSyncedData('REALCODE01', { currentDay: day, history: [], customActivities: [] });
 
     expect(setDocMock).toHaveBeenCalledTimes(1);
     const [, payload] = setDocMock.mock.calls[0];
-    expect(Object.keys(payload).sort()).toEqual(['currentDay', 'history']);
+    expect(Object.keys(payload).sort()).toEqual(['currentDay', 'customActivities', 'history']);
     expect(JSON.stringify(payload)).not.toContain('llmApiKey');
   });
 });
@@ -112,7 +135,7 @@ describe('watchSyncedData', () => {
 
     expect(onSnapshotMock).toHaveBeenCalledTimes(1);
     const [, callback] = onSnapshotMock.mock.calls[0];
-    const data = { currentDay: null, history: [] };
+    const data = { currentDay: null, history: [], customActivities: [] };
     callback({ metadata: { hasPendingWrites: false }, exists: () => true, data: () => data });
 
     expect(onChange).toHaveBeenCalledWith(data);
@@ -128,7 +151,7 @@ describe('watchSyncedData', () => {
     callback({
       metadata: { hasPendingWrites: true },
       exists: () => true,
-      data: () => ({ currentDay: null, history: [] }),
+      data: () => ({ currentDay: null, history: [], customActivities: [] }),
     });
 
     expect(onChange).not.toHaveBeenCalled();
@@ -166,8 +189,8 @@ describe('when Firebase is not configured (no .env, the shipped default)', () =>
   });
 
   it('pushSyncedData is a silent no-op', async () => {
-    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
-    await expect(pushSyncedData('REALCODE01', { currentDay: day, history: [] })).resolves.toBeUndefined();
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', []);
+    await expect(pushSyncedData('REALCODE01', { currentDay: day, history: [], customActivities: [] })).resolves.toBeUndefined();
     expect(setDocMock).not.toHaveBeenCalled();
   });
 

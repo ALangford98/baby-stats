@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const signInAnonymouslyMock = vi.fn();
 const getDocMock = vi.fn();
 const setDocMock = vi.fn();
+const onSnapshotMock = vi.fn();
+const unsubscribeMock = vi.fn();
 const docMock = vi.fn((_db, _coll, id) => ({ id }));
 
 vi.mock('firebase/app', () => ({ initializeApp: vi.fn(() => ({})) }));
@@ -15,9 +17,10 @@ vi.mock('firebase/firestore', () => ({
   doc: (db: any, coll: any, id: any) => docMock(db, coll, id),
   getDoc: (ref: any) => getDocMock(ref),
   setDoc: (ref: any, data: any) => setDocMock(ref, data),
+  onSnapshot: (ref: any, callback: any) => onSnapshotMock(ref, callback),
 }));
 
-import { ensureAnonymousAuth, fetchSyncedData, pushSyncedData } from './firebaseSync';
+import { ensureAnonymousAuth, fetchSyncedData, pushSyncedData, watchSyncedData } from './firebaseSync';
 import { resetFirebaseServicesForTest } from './firebaseClient';
 import { createEmptyDay } from '../domain/day';
 
@@ -32,6 +35,8 @@ beforeEach(() => {
   signInAnonymouslyMock.mockReset().mockResolvedValue(undefined);
   getDocMock.mockReset();
   setDocMock.mockReset().mockResolvedValue(undefined);
+  onSnapshotMock.mockReset().mockReturnValue(unsubscribeMock);
+  unsubscribeMock.mockReset();
   configureFirebase('test-api-key');
 });
 
@@ -97,6 +102,56 @@ describe('pushSyncedData', () => {
     const [, payload] = setDocMock.mock.calls[0];
     expect(Object.keys(payload).sort()).toEqual(['currentDay', 'history']);
     expect(JSON.stringify(payload)).not.toContain('llmApiKey');
+  });
+});
+
+describe('watchSyncedData', () => {
+  it('subscribes and invokes onChange with well-formed remote data from another device', () => {
+    const onChange = vi.fn();
+    const unsubscribe = watchSyncedData('REALCODE01', onChange);
+
+    expect(onSnapshotMock).toHaveBeenCalledTimes(1);
+    const [, callback] = onSnapshotMock.mock.calls[0];
+    const data = { currentDay: null, history: [] };
+    callback({ metadata: { hasPendingWrites: false }, exists: () => true, data: () => data });
+
+    expect(onChange).toHaveBeenCalledWith(data);
+    unsubscribe();
+    expect(unsubscribeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a snapshot that is just an echo of this device\'s own pending write', () => {
+    const onChange = vi.fn();
+    watchSyncedData('REALCODE01', onChange);
+
+    const [, callback] = onSnapshotMock.mock.calls[0];
+    callback({
+      metadata: { hasPendingWrites: true },
+      exists: () => true,
+      data: () => ({ currentDay: null, history: [] }),
+    });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('ignores a malformed remote snapshot instead of forwarding it', () => {
+    const onChange = vi.fn();
+    watchSyncedData('REALCODE01', onChange);
+
+    const [, callback] = onSnapshotMock.mock.calls[0];
+    callback({ metadata: { hasPendingWrites: false }, exists: () => true, data: () => ({ currentDay: 'nope' }) });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('returns a no-op unsubscribe and never calls onChange when Firebase is not configured', () => {
+    configureFirebase(undefined);
+    const onChange = vi.fn();
+
+    const unsubscribe = watchSyncedData('REALCODE01', onChange);
+
+    expect(onSnapshotMock).not.toHaveBeenCalled();
+    expect(() => unsubscribe()).not.toThrow();
   });
 });
 

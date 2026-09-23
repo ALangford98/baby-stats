@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
-import { fetchSyncedData } from './storage/firebaseSync';
+import { fetchSyncedData, watchSyncedData } from './storage/firebaseSync';
+import { createEmptyDay } from './domain/day';
 import { saveSettings } from './storage/localStorage';
 import type { Day } from './types';
 
@@ -10,6 +11,9 @@ vi.mock('./storage/firebaseSync', () => ({
   ensureAnonymousAuth: vi.fn().mockResolvedValue(undefined),
   fetchSyncedData: vi.fn().mockResolvedValue(null),
   pushSyncedData: vi.fn().mockResolvedValue(undefined),
+  // Real watchSyncedData returns an unsubscribe function; no test here
+  // exercises a remote update arriving, so a no-op subscription is enough.
+  watchSyncedData: vi.fn().mockReturnValue(() => {}),
 }));
 
 beforeEach(() => {
@@ -120,6 +124,27 @@ describe('App: returning user', () => {
   it('still asks for consent when there are no saved settings', () => {
     render(<App />);
     expect(screen.getByRole('dialog', { name: /consent/i })).toBeInTheDocument();
+  });
+});
+
+describe('App: multi-device sync', () => {
+  it('applies a change reported by the live listener, e.g. from the other parent\'s phone', async () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null });
+    render(<App />);
+
+    // Confirm the default start time to land on the main tracking screen,
+    // where the live listener from useCloudSync is active.
+    await userEvent.click(screen.getByRole('button', { name: /confirm|start/i }));
+    expect(screen.getByRole('button', { name: /^light diaper$/i })).toBeInTheDocument();
+
+    // Simulate another device finishing a day and it syncing back down —
+    // the mocked watchSyncedData captured the onChange callback App passed in.
+    const onRemoteChange = vi.mocked(watchSyncedData).mock.calls[0][1];
+    const remoteDay = createEmptyDay('2026-09-22T08:00:00.000Z');
+    onRemoteChange({ currentDay: null, history: [remoteDay] });
+
+    await userEvent.click(screen.getByRole('button', { name: /history/i }));
+    expect(screen.getByText(remoteDay.date)).toBeInTheDocument();
   });
 });
 

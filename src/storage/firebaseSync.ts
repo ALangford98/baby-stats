@@ -1,5 +1,5 @@
 import { signInAnonymously } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirebaseServices } from './firebaseClient';
 import type { Day } from '../types';
 
@@ -41,5 +41,25 @@ export async function pushSyncedData(recoveryCode: string, data: SyncedData): Pr
   await setDoc(doc(services.db, 'users', recoveryCode), {
     currentDay: data.currentDay,
     history: data.history,
+  });
+}
+
+/**
+ * Subscribes to live updates for this recovery code, so a change made on
+ * another device (a second parent's phone) shows up here automatically.
+ * `hasPendingWrites` snapshots are our own optimistic write echoing back —
+ * skipping those is what stops us from re-applying our own change to
+ * ourselves. Returns an unsubscribe function; a no-op one when cloud sync
+ * isn't configured, so callers never need a null check.
+ */
+export function watchSyncedData(recoveryCode: string, onChange: (data: SyncedData) => void): () => void {
+  const services = getFirebaseServices();
+  if (!services) return () => {};
+  return onSnapshot(doc(services.db, 'users', recoveryCode), (snapshot) => {
+    if (snapshot.metadata.hasPendingWrites) return;
+    if (!snapshot.exists()) return;
+    const data: unknown = snapshot.data();
+    if (!isSyncedData(data)) return;
+    onChange(data);
   });
 }

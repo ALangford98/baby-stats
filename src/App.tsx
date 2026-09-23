@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { ActivityType, Day, TimerSession } from './types';
 import { AppHeader } from './components/AppHeader';
 import { ConsentModal } from './components/ConsentModal';
@@ -15,7 +15,7 @@ import { useHistory } from './hooks/useHistory';
 import { useCloudSync } from './hooks/useCloudSync';
 import { generateOfflineReport } from './domain/reportText';
 import { generateAiReport } from './domain/aiReport';
-import { fetchSyncedData } from './storage/firebaseSync';
+import { fetchSyncedData, type SyncedData } from './storage/firebaseSync';
 import { loadSettings } from './storage/localStorage';
 
 type Screen =
@@ -72,7 +72,19 @@ function Tracker() {
   const { settings, updateSettings } = useSettings();
   const { history, addToHistory, replaceHistory, removeFromHistory } = useHistory();
 
-  useCloudSync(settings.recoveryCode, dayState.day, history);
+  // Applies a change that arrived from another device using the same
+  // recovery code (e.g. the other parent's phone). Kept stable via
+  // useCallback so the listener in useCloudSync only resubscribes when the
+  // recovery code itself changes, not on every local edit.
+  const handleRemoteUpdate = useCallback(
+    (data: SyncedData) => {
+      dayState.replaceDay(data.currentDay);
+      replaceHistory(data.history);
+    },
+    [dayState.replaceDay, replaceHistory],
+  );
+
+  useCloudSync(settings.recoveryCode, dayState.day, history, handleRemoteUpdate);
 
   async function handleUseExistingCode(code: string) {
     setRestoreError(null);

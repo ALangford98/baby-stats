@@ -1,0 +1,15 @@
+.main-screen__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.main-screen__end-day {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  padding: 16px;
+  font-size: 1.1rem;
+  font-weight: bold;
+}

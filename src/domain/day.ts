@@ -63,7 +63,7 @@ export function toggleTimer(day: Day, type: ActivityType, now: string): Day {
 export function setTimerSessions(day: Day, type: ActivityType, sessions: TimerSession[]): Day {
   return updateLog(day, type, (log) => {
     if (log.kind !== 'timer') throw new Error(`${type} is not a timer activity`);
-    return { ...log, sessions };
+    return { ...log, sessions: [...sessions] };
   });
 }
 

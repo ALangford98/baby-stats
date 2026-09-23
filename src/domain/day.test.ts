@@ -19,6 +19,7 @@ describe('createEmptyDay', () => {
     expect(day.startedAt).toBe(START);
     expect(day.endedAt).toBeNull();
     expect(day.report).toBeNull();
+    expect(day.reportSource).toBeNull();
     for (const activity of ACTIVITIES) {
       const log = day.logs[activity.type];
       if (activity.kind === 'counter') {
@@ -115,5 +116,16 @@ describe('endDay', () => {
   it('handles a day with zero activity logged at all without throwing', () => {
     const day = createEmptyDay(START);
     expect(() => endDay(day, '2026-09-23T18:00:00.000Z')).not.toThrow();
+  });
+
+  it('closes a running session that was added manually via setTimerSessions', () => {
+    let day = createEmptyDay(START);
+    day = setTimerSessions(day, 'nap', [{ start: '2026-09-23T09:00:00.000Z', end: null }]);
+    expect(isTimerRunning(day, 'nap')).toBe(true);
+
+    const ended = endDay(day, '2026-09-23T18:00:00.000Z');
+
+    expect(isTimerRunning(ended, 'nap')).toBe(false);
+    expect((ended.logs.nap as any).sessions[0].end).toBe('2026-09-23T18:00:00.000Z');
   });
 });

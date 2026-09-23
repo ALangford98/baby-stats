@@ -70,7 +70,7 @@ function Tracker() {
   const [restoreError, setRestoreError] = useState<string | null>(null);
 
   const { settings, updateSettings } = useSettings();
-  const { history, addToHistory, replaceHistory } = useHistory();
+  const { history, addToHistory, replaceHistory, removeFromHistory } = useHistory();
 
   useCloudSync(settings.recoveryCode, dayState.day, history);
 
@@ -182,6 +182,7 @@ function Tracker() {
         history={history}
         onSelect={(day) => { setSelectedHistoryDay(day); setScreen('historyDetail'); }}
         onClose={backToTracker}
+        onDelete={(day) => removeFromHistory(day.startedAt)}
       />
     );
   }

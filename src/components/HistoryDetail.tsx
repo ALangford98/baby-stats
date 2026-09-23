@@ -1,5 +1,6 @@
 import type { Day } from '../types';
 import { buildStatsSummary } from '../domain/reportText';
+import './ReportScreen.css';
 
 type HistoryDetailProps = {
   day: Day;
@@ -12,8 +13,8 @@ export function HistoryDetail({ day, onBack }: HistoryDetailProps) {
       <button type="button" onClick={onBack}>
         Back
       </button>
-      <p>{day.report}</p>
-      <pre>{buildStatsSummary(day)}</pre>
+      <pre className="report-stats">{buildStatsSummary(day)}</pre>
+      <p className="report-text">{day.report}</p>
     </div>
   );
 }

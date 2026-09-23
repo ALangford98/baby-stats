@@ -1,5 +1,6 @@
 import type { Day, Settings } from '../types';
-import { buildPromptText } from '../domain/reportText';
+import { buildPromptText, buildStatsSummary } from '../domain/reportText';
+import './ReportScreen.css';
 
 type ReportScreenProps = {
   day: Day;
@@ -15,7 +16,8 @@ export function ReportScreen({ day, settings, onGenerateAi, aiLoading, aiError, 
 
   return (
     <div>
-      <p>{day.report}</p>
+      <pre className="report-stats">{buildStatsSummary(day)}</pre>
+      <p className="report-text">{day.report}</p>
       {aiError && <p role="alert">{aiError}</p>}
       {hasLlmKey && (
         <button type="button" onClick={onGenerateAi} disabled={aiLoading}>

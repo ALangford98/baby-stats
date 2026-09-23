@@ -54,6 +54,11 @@ describe('generateOfflineReport', () => {
     expect(generateOfflineReport(day).length).toBeGreaterThan(0);
   });
 
+  it('never uses an em dash — newlines and regular dashes only', () => {
+    const report = generateOfflineReport(sampleDay());
+    expect(report).not.toContain('—');
+  });
+
   it('picks a different line as a counter crosses bucket thresholds', () => {
     let day = createEmptyDay(START);
     const zero = generateOfflineReport(day);

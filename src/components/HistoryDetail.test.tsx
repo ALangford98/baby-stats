@@ -16,6 +16,17 @@ describe('HistoryDetail', () => {
     expect(screen.getByText(/light diaper: 1/i)).toBeInTheDocument();
   });
 
+  it('shows the stats summary before the report text', () => {
+    let day = createEmptyDay('2026-09-23T08:00:00.000Z');
+    day = { ...day, endedAt: '2026-09-23T20:00:00.000Z', report: 'A very funny report.', reportSource: 'offline' };
+
+    render(<HistoryDetail day={day} onBack={vi.fn()} />);
+
+    const statsText = screen.getByText(/light diaper: 0/i);
+    const reportText = screen.getByText('A very funny report.');
+    expect(statsText.compareDocumentPosition(reportText) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('calls onBack when the back button is tapped', async () => {
     const day = createEmptyDay('2026-09-23T08:00:00.000Z');
     const onBack = vi.fn();

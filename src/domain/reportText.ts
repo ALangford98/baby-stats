@@ -50,49 +50,49 @@ type TimerActivityType = 'nap' | 'tummyTime' | 'cryingFit';
 
 const COUNTER_TEMPLATES: Record<CounterActivityType, string[]> = {
   lightDiaper: [
-    'Not a single light diaper today — skipped the easy ones entirely.',
-    'A couple of light diapers — nice and breezy.',
-    'Several light diapers today — a steady drizzle.',
-    '6+ light diapers — basically a subscription service at this point.',
+    'Not a single light diaper today\n- skipped the easy ones entirely.',
+    'A couple of light diapers\n- nice and breezy.',
+    'Several light diapers today\n- a steady drizzle.',
+    '6+ light diapers\n- basically a subscription service at this point.',
   ],
   mediumDiaper: [
-    'Zero medium diapers — living the dream.',
+    'Zero medium diapers\n- living the dream.',
     'A light rotation of medium diapers today.',
-    'A solid handful of medium diapers — business as usual.',
-    '6+ medium diapers — the diaper genie earned its keep.',
+    'A solid handful of medium diapers\n- business as usual.',
+    '6+ medium diapers\n- the diaper genie earned its keep.',
   ],
   heavyDiaper: [
-    'No heavy diapers today — count your blessings.',
+    'No heavy diapers today\n- count your blessings.',
     'A couple of heavy diapers snuck in there.',
-    'Several heavy diapers — bring out the good wipes.',
-    '6+ heavy diapers — someone should get hazard pay.',
+    'Several heavy diapers\n- bring out the good wipes.',
+    '6+ heavy diapers\n- someone should get hazard pay.',
   ],
   spitUp: [
-    'No spit up today — the shirt survives another day.',
-    'A little spit up here and there — cosmetic damage only.',
-    'A fair amount of spit up — you\'ve basically got a second job.',
-    '6+ spit ups — you may want to invest in a poncho.',
+    'No spit up today\n- the shirt survives another day.',
+    'A little spit up here and there\n- cosmetic damage only.',
+    'A fair amount of spit up\n- you\'ve basically got a second job.',
+    '6+ spit ups\n- you may want to invest in a poncho.',
   ],
 };
 
 const TIMER_TEMPLATES: Record<TimerActivityType, string[]> = {
   nap: [
-    'No naps today — everyone is running on fumes.',
-    'A short nap snuck in there — better than nothing.',
-    'A solid chunk of nap time today — a small miracle.',
-    '90+ minutes of napping — truly professional-grade sleeping.',
+    'No naps today\n- everyone is running on fumes.',
+    'A short nap snuck in there\n- better than nothing.',
+    'A solid chunk of nap time today\n- a small miracle.',
+    '90+ minutes of napping\n- truly professional-grade sleeping.',
   ],
   tummyTime: [
-    'No tummy time today — the floor stayed lonely.',
-    'A quick bit of tummy time — baby tolerated it, barely.',
-    'A good stretch of tummy time — those neck muscles are working.',
-    '90+ minutes of tummy time — basically training for a marathon.',
+    'No tummy time today\n- the floor stayed lonely.',
+    'A quick bit of tummy time\n- baby tolerated it, barely.',
+    'A good stretch of tummy time\n- those neck muscles are working.',
+    '90+ minutes of tummy time\n- basically training for a marathon.',
   ],
   cryingFit: [
-    'No crying fits today — is this baby broken? (Kidding. Great job.)',
-    'A brief crying fit — a small storm, quickly passed.',
-    'A fair bit of crying today — everyone needed a hug after.',
-    '90+ minutes of crying — you deserve a medal and a nap of your own.',
+    'No crying fits today\n- is this baby broken? (Kidding. Great job.)',
+    'A brief crying fit\n- a small storm, quickly passed.',
+    'A fair bit of crying today\n- everyone needed a hug after.',
+    '90+ minutes of crying\n- you deserve a medal and a nap of your own.',
   ],
 };
 

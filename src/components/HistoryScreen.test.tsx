@@ -37,4 +37,30 @@ describe('HistoryScreen', () => {
     expect(onSelect).toHaveBeenCalledWith(evening);
     warn.mockRestore();
   });
+
+  it('deletes a day after the user confirms, without selecting it', async () => {
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
+    const onSelect = vi.fn();
+    const onDelete = vi.fn();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<HistoryScreen history={[day]} onSelect={onSelect} onClose={vi.fn()} onDelete={onDelete} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /delete/i }));
+
+    expect(onDelete).toHaveBeenCalledWith(day);
+    expect(onSelect).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('does not delete when the user cancels the confirmation', async () => {
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
+    const onDelete = vi.fn();
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<HistoryScreen history={[day]} onSelect={vi.fn()} onClose={vi.fn()} onDelete={onDelete} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /delete/i }));
+
+    expect(onDelete).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
 });

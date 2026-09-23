@@ -27,4 +27,17 @@ describe('useHistory', () => {
 
     expect(result.current.history).toEqual(restored);
   });
+
+  it('removeFromHistory deletes one day by startedAt and persists it', () => {
+    const { result } = renderHook(() => useHistory());
+    const dayA = createEmptyDay('2026-09-20T08:00:00.000Z');
+    const dayB = createEmptyDay('2026-09-21T08:00:00.000Z');
+    act(() => result.current.replaceHistory([dayA, dayB]));
+
+    act(() => result.current.removeFromHistory(dayA.startedAt));
+
+    expect(result.current.history).toEqual([dayB]);
+    const { result: reloaded } = renderHook(() => useHistory());
+    expect(reloaded.current.history).toEqual([dayB]);
+  });
 });

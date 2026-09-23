@@ -21,5 +21,13 @@ export function useHistory() {
     [],
   );
 
-  return { history, addToHistory, replaceHistory };
+  const removeFromHistory = useCallback((startedAt: string) => {
+    setHistoryState((prev) => {
+      const next = prev.filter((day) => day.startedAt !== startedAt);
+      saveHistory(next);
+      return next;
+    });
+  }, []);
+
+  return { history, addToHistory, replaceHistory, removeFromHistory };
 }

@@ -20,6 +20,13 @@ describe('ReportScreen', () => {
     expect(screen.getByText('Offline report text')).toBeInTheDocument();
   });
 
+  it('shows the stats summary before the report text', () => {
+    render(<ReportScreen day={baseDay} settings={settingsNoKey} onGenerateAi={vi.fn()} aiLoading={false} aiError={null} onContinue={vi.fn()} />);
+    const statsText = screen.getByText(/light diaper: 0/i);
+    const reportText = screen.getByText('Offline report text');
+    expect(statsText.compareDocumentPosition(reportText) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('hides the "Generate with AI" button when no LLM key is configured', () => {
     render(<ReportScreen day={baseDay} settings={settingsNoKey} onGenerateAi={vi.fn()} aiLoading={false} aiError={null} onContinue={vi.fn()} />);
     expect(screen.queryByRole('button', { name: /generate with ai/i })).not.toBeInTheDocument();

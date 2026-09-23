@@ -32,4 +32,22 @@ describe('SettingsScreen', () => {
 
     expect(onEnterRecoveryCode).toHaveBeenCalledWith('ZZZZ999999');
   });
+
+  it('shows a restore error when one is passed in', () => {
+    render(
+      <SettingsScreen
+        settings={settings}
+        onUpdate={vi.fn()}
+        onClose={vi.fn()}
+        onEnterRecoveryCode={vi.fn()}
+        restoreError="Could not reach that recovery code right now."
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not reach that recovery code/i);
+  });
+
+  it('shows no alert when there is no restore error', () => {
+    render(<SettingsScreen settings={settings} onUpdate={vi.fn()} onClose={vi.fn()} onEnterRecoveryCode={vi.fn()} />);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });

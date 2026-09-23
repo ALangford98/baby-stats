@@ -6,9 +6,10 @@ type SettingsScreenProps = {
   onUpdate: (patch: Partial<Settings>) => void;
   onClose: () => void;
   onEnterRecoveryCode: (code: string) => void;
+  restoreError?: string | null;
 };
 
-export function SettingsScreen({ settings, onUpdate, onClose, onEnterRecoveryCode }: SettingsScreenProps) {
+export function SettingsScreen({ settings, onUpdate, onClose, onEnterRecoveryCode, restoreError }: SettingsScreenProps) {
   const [newCode, setNewCode] = useState('');
   const [apiKey, setApiKey] = useState(settings.llmApiKey ?? '');
 
@@ -52,6 +53,7 @@ export function SettingsScreen({ settings, onUpdate, onClose, onEnterRecoveryCod
       <button type="button" onClick={() => onEnterRecoveryCode(newCode.trim())}>
         Switch code
       </button>
+      {restoreError && <p role="alert">{restoreError}</p>}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import { useCloudSync } from './hooks/useCloudSync';
 import { generateOfflineReport } from './domain/reportText';
 import { generateAiReport } from './domain/aiReport';
 import { fetchSyncedData } from './storage/firebaseSync';
+import { loadSettings } from './storage/localStorage';
 
 type Screen =
   | 'recoveryCode'
@@ -31,7 +32,13 @@ type Screen =
 // hooks are not invoked at all until the user accepts — so declining
 // consent leaves localStorage untouched.
 export function App() {
-  const [consent, setConsent] = useState<'pending' | 'granted' | 'declined'>('pending');
+  // Someone with saved settings already answered this question on a previous
+  // launch. Re-asking every time would be noise, and worse: declining would
+  // claim "nothing has been saved" while their real data sits in localStorage.
+  // `loadSettings` is a pure read, so declining still writes nothing.
+  const [consent, setConsent] = useState<'pending' | 'granted' | 'declined'>(() =>
+    loadSettings() ? 'granted' : 'pending',
+  );
 
   if (consent === 'pending') {
     return <ConsentModal onAccept={() => setConsent('granted')} onDecline={() => setConsent('declined')} />;
@@ -45,8 +52,17 @@ export function App() {
 }
 
 function Tracker() {
+  // Must be read before `useSettings()` runs: that hook's own lazy initializer
+  // creates and saves fresh settings when none exist, so asking afterwards
+  // would always say "returning". The recovery-code step is onboarding — a
+  // returning user has already seen and saved their code.
+  const [isReturningUser] = useState(() => loadSettings() !== null);
+
   const dayState = useDayState();
-  const [screen, setScreen] = useState<Screen>(() => (dayState.day ? 'main' : 'recoveryCode'));
+  const [screen, setScreen] = useState<Screen>(() => {
+    if (dayState.day) return 'main';
+    return isReturningUser ? 'startTime' : 'recoveryCode';
+  });
   const [selectedHistoryDay, setSelectedHistoryDay] = useState<Day | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -83,7 +99,10 @@ function Tracker() {
 
   function handleEndDay() {
     const ended = dayState.finishDay();
-    dayState.setDayReport(generateOfflineReport(ended), 'offline');
+    // One write, not two: `setDayReport` closes over the pre-`finishDay` `day`,
+    // so calling it here would persist a stale copy over what `finishDay` just
+    // saved — losing `endedAt` and the closed timer sessions on disk.
+    dayState.replaceDay({ ...ended, report: generateOfflineReport(ended), reportSource: 'offline' });
     setAiError(null);
     setScreen('report');
   }
@@ -144,7 +163,11 @@ function Tracker() {
         settings={settings}
         onUpdate={updateSettings}
         onClose={backToTracker}
-        onEnterRecoveryCode={(code) => { handleUseExistingCode(code); backToTracker(); }}
+        // No `backToTracker()` here: `handleUseExistingCode` owns the screen
+        // transition on success and deliberately stays put on failure, so the
+        // restore error below is actually visible where it was triggered.
+        onEnterRecoveryCode={(code) => { void handleUseExistingCode(code); }}
+        restoreError={restoreError}
       />
     );
   }

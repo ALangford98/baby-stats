@@ -6,7 +6,7 @@ import { generateRecoveryCode } from '../utils/recoveryCode';
 function loadOrCreateSettings(): Settings {
   const existing = loadSettings();
   if (existing) return existing;
-  const fresh: Settings = { recoveryCode: generateRecoveryCode(), llmProvider: null, llmApiKey: null };
+  const fresh: Settings = { recoveryCode: generateRecoveryCode(), llmProvider: null, llmApiKey: null, customActivities: [] };
   saveSettings(fresh);
   return fresh;
 }

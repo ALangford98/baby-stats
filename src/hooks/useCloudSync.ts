@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import type { Day } from '../types';
+import type { ActivityConfig, Day } from '../types';
 import { ensureAnonymousAuth, pushSyncedData, watchSyncedData, type SyncedData } from '../storage/firebaseSync';
 
 export function useCloudSync(
   recoveryCode: string,
   day: Day | null,
   history: Day[],
+  customActivities: ActivityConfig[],
   onRemoteUpdate: (data: SyncedData) => void,
 ): void {
   // Push effect: fires whenever this device's own state changes.
@@ -15,7 +16,7 @@ export function useCloudSync(
       try {
         await ensureAnonymousAuth();
         if (cancelled) return;
-        await pushSyncedData(recoveryCode, { currentDay: day, history });
+        await pushSyncedData(recoveryCode, { currentDay: day, history, customActivities });
       } catch {
         // Best-effort sync only — the app is offline-first and localStorage
         // already holds the source of truth for this session.
@@ -24,7 +25,7 @@ export function useCloudSync(
     return () => {
       cancelled = true;
     };
-  }, [recoveryCode, day, history]);
+  }, [recoveryCode, day, history, customActivities]);
 
   // Listen effect: separate from the push effect and keyed only on the
   // recovery code, so a second device's changes arrive live without this

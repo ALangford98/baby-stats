@@ -23,17 +23,18 @@ beforeEach(() => {
 });
 
 describe('useCloudSync', () => {
-  it('pushes the current day and history for this recovery code', async () => {
-    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
-    renderHook(() => useCloudSync('CODE123456', day, [], vi.fn()));
+  it('pushes the current day, history, and customActivities for this recovery code', async () => {
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', []);
+    const customActivities = [{ type: 'custom-abc12345', label: 'Tummy medicine', kind: 'counter' as const, icon: 'Pill' as const }];
+    renderHook(() => useCloudSync('CODE123456', day, [], customActivities, vi.fn()));
 
     await waitFor(() => {
-      expect(pushSyncedDataMock).toHaveBeenCalledWith('CODE123456', { currentDay: day, history: [] });
+      expect(pushSyncedDataMock).toHaveBeenCalledWith('CODE123456', { currentDay: day, history: [], customActivities });
     });
   });
 
   it('subscribes to remote updates for this recovery code', () => {
-    renderHook(() => useCloudSync('CODE123456', null, [], vi.fn()));
+    renderHook(() => useCloudSync('CODE123456', null, [], [], vi.fn()));
 
     expect(watchSyncedDataMock).toHaveBeenCalledTimes(1);
     expect(watchSyncedDataMock.mock.calls[0][0]).toBe('CODE123456');
@@ -41,31 +42,31 @@ describe('useCloudSync', () => {
 
   it('calls onRemoteUpdate with data a remote listener reports', () => {
     const onRemoteUpdate = vi.fn();
-    renderHook(() => useCloudSync('CODE123456', null, [], onRemoteUpdate));
+    renderHook(() => useCloudSync('CODE123456', null, [], [], onRemoteUpdate));
 
     const remoteCallback = watchSyncedDataMock.mock.calls[0][1];
-    const remoteData = { currentDay: null, history: [createEmptyDay('2026-09-20T08:00:00.000Z')] };
+    const remoteData = { currentDay: null, history: [createEmptyDay('2026-09-20T08:00:00.000Z', [])], customActivities: [] };
     remoteCallback(remoteData);
 
     expect(onRemoteUpdate).toHaveBeenCalledWith(remoteData);
   });
 
   it('unsubscribes the listener on unmount', () => {
-    const { unmount } = renderHook(() => useCloudSync('CODE123456', null, [], vi.fn()));
+    const { unmount } = renderHook(() => useCloudSync('CODE123456', null, [], [], vi.fn()));
     unmount();
     expect(unsubscribeMock).toHaveBeenCalledTimes(1);
   });
 
   it('re-subscribes only when the recovery code changes, not on every day/history update', () => {
-    const day1 = createEmptyDay('2026-09-23T08:00:00.000Z');
-    const day2 = createEmptyDay('2026-09-23T09:00:00.000Z');
+    const day1 = createEmptyDay('2026-09-23T08:00:00.000Z', []);
+    const day2 = createEmptyDay('2026-09-23T09:00:00.000Z', []);
     // A stable onRemoteUpdate reference, matching how App.tsx will pass one
     // via useCallback — a fresh function every render would legitimately
     // resubscribe, since it's a hook dependency.
     const stableOnRemoteUpdate = vi.fn();
     const { rerender } = renderHook(
       ({ day }: { day: ReturnType<typeof createEmptyDay> }) =>
-        useCloudSync('CODE123456', day, [], stableOnRemoteUpdate),
+        useCloudSync('CODE123456', day, [], [], stableOnRemoteUpdate),
       { initialProps: { day: day1 } },
     );
 

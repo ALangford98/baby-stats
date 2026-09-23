@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
-import type { ActivityType, Day, TimerSession } from '../types';
+import type { ActivityConfig, ActivityType, Day, TimerSession } from '../types';
 import {
+  addActivityToDay,
   createEmptyDay,
   endDay,
   incrementCounter as incrementCounterDomain,
@@ -18,7 +19,10 @@ export function useDayState() {
     saveCurrentDay(next);
   }, []);
 
-  const startDay = useCallback((startedAt: string) => persist(createEmptyDay(startedAt)), [persist]);
+  const startDay = useCallback(
+    (startedAt: string, activities: ActivityConfig[]) => persist(createEmptyDay(startedAt, activities)),
+    [persist],
+  );
 
   const incrementCounter = useCallback(
     (type: ActivityType) => {
@@ -52,6 +56,14 @@ export function useDayState() {
     [day, persist],
   );
 
+  const addActivity = useCallback(
+    (activity: ActivityConfig) => {
+      if (!day) return;
+      persist(addActivityToDay(day, activity));
+    },
+    [day, persist],
+  );
+
   const finishDay = useCallback((): Day => {
     if (!day) throw new Error('No active day to finish');
     const ended = endDay(day, new Date().toISOString());
@@ -78,6 +90,7 @@ export function useDayState() {
     setCounterCount,
     toggleTimer,
     setTimerSessions,
+    addActivity,
     finishDay,
     setDayReport,
     clearDay,

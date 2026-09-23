@@ -38,3 +38,9 @@
 .activity-button__elapsed {
   font-variant-numeric: tabular-nums;
 }
+
+.activity-button__main--add {
+  background: #fafafa;
+  border: 1px dashed #999;
+  color: #777;
+}

@@ -6,7 +6,7 @@
 
 **Architecture:** Pure, side-effect-free domain functions (`src/domain/`) for day state and report text, wrapped by React hooks (`src/hooks/`) that add persistence (localStorage) and best-effort cloud sync (Firebase). Presentational components (`src/components/`) consume the hooks. `App.tsx` is a small screen-state-machine wiring it together.
 
-**Tech Stack:** Vite, React 18, TypeScript, `lucide-react`, Firebase (Firestore + Anonymous Auth), Vitest, React Testing Library.
+**Tech Stack:** Vite, React 19, TypeScript, `lucide-react`, Firebase (Firestore + Anonymous Auth), Vitest, React Testing Library. (Updated from an initial "React 18" during Task 1's review: npm's current resolution is React 19.x, and no task in this plan relies on React 18-specific behavior — see ledger ruling.)
 
 **Spec:** `docs/superpowers/specs/2026-09-23-baby-stats-tracker-design.md`
 

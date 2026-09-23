@@ -18,5 +18,5 @@ export async function fetchSyncedData(recoveryCode: string): Promise<SyncedData 
 }
 
 export async function pushSyncedData(recoveryCode: string, data: SyncedData): Promise<void> {
-  await setDoc(doc(db, 'users', recoveryCode), data);
+  await setDoc(doc(db, 'users', recoveryCode), { currentDay: data.currentDay, history: data.history });
 }

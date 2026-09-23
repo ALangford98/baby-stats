@@ -1,14 +1,16 @@
-import type { ActivityLog, ActivityType, Day, TimerLog, TimerSession } from '../types';
-import { ACTIVITIES } from '../activities';
+import type { ActivityConfig, ActivityLog, ActivityType, Day, TimerLog, TimerSession } from '../types';
 import { toLocalDateString } from '../utils/time';
 
-export function createEmptyDay(startedAt: string): Day {
+function createEmptyLog(activity: ActivityConfig): ActivityLog {
+  return activity.kind === 'counter'
+    ? { kind: 'counter', type: activity.type, count: 0 }
+    : { kind: 'timer', type: activity.type, sessions: [] };
+}
+
+export function createEmptyDay(startedAt: string, activities: ActivityConfig[]): Day {
   const logs = {} as Record<ActivityType, ActivityLog>;
-  for (const activity of ACTIVITIES) {
-    logs[activity.type] =
-      activity.kind === 'counter'
-        ? { kind: 'counter', type: activity.type, count: 0 }
-        : { kind: 'timer', type: activity.type, sessions: [] };
+  for (const activity of activities) {
+    logs[activity.type] = createEmptyLog(activity);
   }
   return {
     // The local calendar date the day was started on — slicing the ISO string
@@ -20,6 +22,13 @@ export function createEmptyDay(startedAt: string): Day {
     report: null,
     reportSource: null,
   };
+}
+
+// Used when a custom activity is created while a day is already in progress,
+// so its button works immediately without waiting for the next day to start.
+export function addActivityToDay(day: Day, activity: ActivityConfig): Day {
+  if (day.logs[activity.type]) return day;
+  return { ...day, logs: { ...day.logs, [activity.type]: createEmptyLog(activity) } };
 }
 
 function updateLog(day: Day, type: ActivityType, update: (log: ActivityLog) => ActivityLog): Day {

@@ -1,12 +1,11 @@
-import { AlertTriangle, Baby, CloudRain, Droplet, Droplets, Moon, Pencil, Waves } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import type { ActivityConfig } from '../activities';
 import type { ActivityLog } from '../types';
 import { isSessionRunning } from '../domain/day';
 import { useElapsedTime } from '../hooks/useElapsedTime';
 import { formatElapsed } from '../utils/time';
+import { ICONS } from './icons';
 import './ActivityButton.css';
-
-const ICONS = { Droplet, Droplets, CloudRain, Waves, Moon, Baby, AlertTriangle } as const;
 
 type ActivityButtonProps = {
   config: ActivityConfig;

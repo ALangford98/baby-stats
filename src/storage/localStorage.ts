@@ -6,9 +6,21 @@ const KEYS = {
   history: 'babystats:history',
 } as const;
 
+// Every load runs inside a `useState` lazy initializer, so a parse error would
+// throw during render on *every* launch with no way back. Corrupt storage
+// degrades to the empty default instead of bricking the app permanently.
+function parseOr<T>(raw: string | null, fallback: T): T {
+  if (raw === null) return fallback;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed === null || parsed === undefined ? fallback : (parsed as T);
+  } catch {
+    return fallback;
+  }
+}
+
 export function loadSettings(): Settings | null {
-  const raw = localStorage.getItem(KEYS.settings);
-  return raw ? (JSON.parse(raw) as Settings) : null;
+  return parseOr<Settings | null>(localStorage.getItem(KEYS.settings), null);
 }
 
 export function saveSettings(settings: Settings): void {
@@ -16,12 +28,11 @@ export function saveSettings(settings: Settings): void {
 }
 
 export function loadCurrentDay(): Day | null {
-  const raw = localStorage.getItem(KEYS.currentDay);
-  return raw ? (JSON.parse(raw) as Day) : null;
+  return parseOr<Day | null>(localStorage.getItem(KEYS.currentDay), null);
 }
 
 export function saveCurrentDay(day: Day | null): void {
-  if (day === null) {
+  if (day === null || day === undefined) {
     localStorage.removeItem(KEYS.currentDay);
   } else {
     localStorage.setItem(KEYS.currentDay, JSON.stringify(day));
@@ -29,10 +40,10 @@ export function saveCurrentDay(day: Day | null): void {
 }
 
 export function loadHistory(): Day[] {
-  const raw = localStorage.getItem(KEYS.history);
-  return raw ? (JSON.parse(raw) as Day[]) : [];
+  const history = parseOr<Day[]>(localStorage.getItem(KEYS.history), []);
+  return Array.isArray(history) ? history : [];
 }
 
 export function saveHistory(history: Day[]): void {
-  localStorage.setItem(KEYS.history, JSON.stringify(history));
+  localStorage.setItem(KEYS.history, JSON.stringify(history ?? []));
 }

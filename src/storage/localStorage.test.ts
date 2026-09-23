@@ -51,3 +51,47 @@ describe('history round-trip', () => {
     expect(loadHistory()).toEqual([day]);
   });
 });
+
+// Every loader runs inside a `useState` lazy initializer. A throw there would
+// crash the app on launch, and on every launch after — with no recovery path,
+// since the bad value stays in storage. Corrupt data must degrade to defaults.
+describe('corrupt storage does not brick the app', () => {
+  it('returns null for settings that are not valid JSON', () => {
+    localStorage.setItem('babystats:settings', 'undefined');
+    expect(() => loadSettings()).not.toThrow();
+    expect(loadSettings()).toBeNull();
+  });
+
+  it('returns null for a current day that is not valid JSON', () => {
+    localStorage.setItem('babystats:currentDay', 'undefined');
+    expect(() => loadCurrentDay()).not.toThrow();
+    expect(loadCurrentDay()).toBeNull();
+  });
+
+  it('returns an empty array for history that is not valid JSON', () => {
+    localStorage.setItem('babystats:history', 'undefined');
+    expect(() => loadHistory()).not.toThrow();
+    expect(loadHistory()).toEqual([]);
+  });
+
+  it('survives truncated JSON', () => {
+    localStorage.setItem('babystats:currentDay', '{"date":"2026-09-2');
+    localStorage.setItem('babystats:history', '[{"date"');
+    localStorage.setItem('babystats:settings', '{oops');
+    expect(loadCurrentDay()).toBeNull();
+    expect(loadHistory()).toEqual([]);
+    expect(loadSettings()).toBeNull();
+  });
+
+  it('returns an empty array when history parses to a non-array', () => {
+    localStorage.setItem('babystats:history', '"not-an-array"');
+    expect(loadHistory()).toEqual([]);
+  });
+
+  it('treats a stored JSON null as absent rather than as data', () => {
+    localStorage.setItem('babystats:currentDay', 'null');
+    localStorage.setItem('babystats:history', 'null');
+    expect(loadCurrentDay()).toBeNull();
+    expect(loadHistory()).toEqual([]);
+  });
+});

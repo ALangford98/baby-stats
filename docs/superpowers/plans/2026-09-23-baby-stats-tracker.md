@@ -1843,7 +1843,7 @@ describe('ActivityButton', () => {
     render(<ActivityButton config={diaperConfig} log={log} onTap={onTap} onEdit={vi.fn()} />);
 
     expect(screen.getByText('3')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: /light diaper/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^light diaper$/i }));
     expect(onTap).toHaveBeenCalledTimes(1);
   });
 
@@ -1851,7 +1851,7 @@ describe('ActivityButton', () => {
     const log: TimerLog = { kind: 'timer', type: 'nap', sessions: [{ start: new Date().toISOString(), end: null }] };
     render(<ActivityButton config={napConfig} log={log} onTap={vi.fn()} onEdit={vi.fn()} />);
 
-    expect(screen.getByRole('button', { name: /nap/i })).toHaveClass('activity-button__main--active');
+    expect(screen.getByRole('button', { name: /^nap$/i })).toHaveClass('activity-button__main--active');
   });
 
   it('calls onEdit when the edit icon is tapped, without triggering onTap', async () => {
@@ -2244,8 +2244,8 @@ describe('MainScreen', () => {
     const day = createEmptyDay('2026-09-23T08:00:00.000Z');
     render(<MainScreen day={day} onTap={vi.fn()} onEditCounter={vi.fn()} onEditTimer={vi.fn()} onEndDay={vi.fn()} />);
 
-    expect(screen.getByRole('button', { name: /light diaper/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /crying fit/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^light diaper$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^crying fit$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /end day/i })).toBeInTheDocument();
   });
 
@@ -2254,7 +2254,7 @@ describe('MainScreen', () => {
     const onTap = vi.fn();
     render(<MainScreen day={day} onTap={onTap} onEditCounter={vi.fn()} onEditTimer={vi.fn()} onEndDay={vi.fn()} />);
 
-    await userEvent.click(screen.getByRole('button', { name: /heavy diaper/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^heavy diaper$/i }));
     expect(onTap).toHaveBeenCalledWith('heavyDiaper');
   });
 
@@ -3312,8 +3312,8 @@ describe('App: full day flow', () => {
     await userEvent.click(screen.getByRole('button', { name: /continue/i })); // recovery code step, start fresh
     await userEvent.click(screen.getByRole('button', { name: /confirm|start/i })); // start time, accept default
 
-    await userEvent.click(screen.getByRole('button', { name: /light diaper/i }));
-    await userEvent.click(screen.getByRole('button', { name: /light diaper/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^light diaper$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^light diaper$/i }));
     await userEvent.click(screen.getByRole('button', { name: /^nap$/i }));
 
     expect(screen.getByRole('button', { name: /^nap$/i })).toHaveClass('activity-button__main--active');

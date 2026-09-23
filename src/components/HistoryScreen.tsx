@@ -17,7 +17,8 @@ export function HistoryScreen({ history, onSelect, onClose }: HistoryScreenProps
       ) : (
         <ul>
           {history.map((day) => (
-            <li key={day.date}>
+            // Keyed by startedAt, not date: two days can share a calendar date.
+            <li key={day.startedAt}>
               <button type="button" onClick={() => onSelect(day)}>
                 {day.date}
               </button>

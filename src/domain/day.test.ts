@@ -30,6 +30,22 @@ describe('createEmptyDay', () => {
       }
     }
   });
+
+  // `date` is the LOCAL calendar date the day was started on. Slicing the ISO
+  // string gave the UTC date, mislabelling any day started near midnight.
+  it('derives date from local calendar getters, not the UTC ISO prefix', () => {
+    const iso = '2026-09-23T23:30:00.000Z';
+    const d = new Date(iso);
+    const expected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    expect(createEmptyDay(iso).date).toBe(expected);
+
+    // In any timezone where this instant is a different local day than the UTC
+    // day, the old `startedAt.slice(0, 10)` answer must no longer be produced.
+    if (d.getDate() !== d.getUTCDate()) {
+      expect(createEmptyDay(iso).date).not.toBe(iso.slice(0, 10));
+    }
+  });
 });
 
 describe('incrementCounter / setCounterCount', () => {
@@ -128,5 +144,48 @@ describe('endDay', () => {
 
     expect(isTimerRunning(ended, 'nap')).toBe(false);
     expect((ended.logs.nap as any).sessions[0].end).toBe('2026-09-23T18:00:00.000Z');
+  });
+
+  // The edit modal lets any session's end be cleared, not only the newest one.
+  // An earlier session left open would otherwise never be closed, and its
+  // duration would keep growing against "now" on every stats recomputation.
+  it('closes an EARLIER open session, not just the last one', () => {
+    let day = createEmptyDay(START);
+    day = setTimerSessions(day, 'nap', [
+      { start: '2026-09-23T09:00:00.000Z', end: null }, // manually reopened
+      { start: '2026-09-23T11:00:00.000Z', end: '2026-09-23T11:30:00.000Z' },
+    ]);
+    // The last session is closed, so the button-state helper says "not running".
+    expect(isTimerRunning(day, 'nap')).toBe(false);
+
+    const ended = endDay(day, '2026-09-23T18:00:00.000Z');
+
+    const sessions = (ended.logs.nap as any).sessions;
+    expect(sessions[0].end).toBe('2026-09-23T18:00:00.000Z');
+    expect(sessions[1].end).toBe('2026-09-23T11:30:00.000Z'); // untouched
+  });
+
+  it('closes every open session across multiple activities', () => {
+    let day = createEmptyDay(START);
+    day = setTimerSessions(day, 'nap', [
+      { start: '2026-09-23T09:00:00.000Z', end: null },
+      { start: '2026-09-23T10:00:00.000Z', end: null },
+    ]);
+    day = setTimerSessions(day, 'tummyTime', [{ start: '2026-09-23T09:15:00.000Z', end: null }]);
+
+    const ended = endDay(day, '2026-09-23T18:00:00.000Z');
+
+    for (const type of ['nap', 'tummyTime'] as const) {
+      for (const session of (ended.logs[type] as any).sessions) {
+        expect(session.end).toBe('2026-09-23T18:00:00.000Z');
+      }
+    }
+  });
+
+  it('leaves counter logs untouched', () => {
+    let day = createEmptyDay(START);
+    day = incrementCounter(day, 'lightDiaper');
+    const ended = endDay(day, '2026-09-23T18:00:00.000Z');
+    expect(ended.logs.lightDiaper).toEqual({ kind: 'counter', type: 'lightDiaper', count: 1 });
   });
 });

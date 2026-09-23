@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ActivityConfig } from '../activities';
 import type { TimerLog, TimerSession } from '../types';
+import { fromLocalInputValue, toLocalInputValue } from '../utils/time';
 
 type EditTimerModalProps = {
   config: ActivityConfig;
@@ -33,16 +34,16 @@ export function EditTimerModal({ config, log, onSave, onClose }: EditTimerModalP
           <input
             id={`start-${index}`}
             type="datetime-local"
-            value={session.start.slice(0, 16)}
-            onChange={(e) => updateSession(index, { start: new Date(e.target.value).toISOString() })}
+            value={toLocalInputValue(session.start)}
+            onChange={(e) => updateSession(index, { start: fromLocalInputValue(e.target.value) })}
           />
           <label htmlFor={`end-${index}`}>End {index + 1}</label>
           <input
             id={`end-${index}`}
             type="datetime-local"
-            value={session.end ? session.end.slice(0, 16) : ''}
+            value={session.end ? toLocalInputValue(session.end) : ''}
             onChange={(e) =>
-              updateSession(index, { end: e.target.value ? new Date(e.target.value).toISOString() : null })
+              updateSession(index, { end: e.target.value ? fromLocalInputValue(e.target.value) : null })
             }
           />
           <button type="button" aria-label={`Delete session ${index + 1}`} onClick={() => deleteSession(index)}>

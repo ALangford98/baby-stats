@@ -1,5 +1,6 @@
 import type { ActivityLog, ActivityType, Day, TimerLog, TimerSession } from '../types';
 import { ACTIVITIES } from '../activities';
+import { toLocalDateString } from '../utils/time';
 
 export function createEmptyDay(startedAt: string): Day {
   const logs = {} as Record<ActivityType, ActivityLog>;
@@ -10,7 +11,9 @@ export function createEmptyDay(startedAt: string): Day {
         : { kind: 'timer', type: activity.type, sessions: [] };
   }
   return {
-    date: startedAt.slice(0, 10),
+    // The local calendar date the day was started on — slicing the ISO string
+    // would give the UTC date, mislabelling days started near midnight.
+    date: toLocalDateString(startedAt),
     startedAt,
     endedAt: null,
     logs,
@@ -67,12 +70,19 @@ export function setTimerSessions(day: Day, type: ActivityType, sessions: TimerSe
   });
 }
 
+// `isTimerRunning` only looks at the most recent session, which is the right
+// question for the button's active/pulsing state. Ending the day is a different
+// question: sessions can be reopened out of order through the edit modal, so
+// every open session has to be swept, not just the last one — an earlier one
+// left open would otherwise keep accruing duration forever.
 export function endDay(day: Day, now: string): Day {
-  let result = day;
-  for (const activity of ACTIVITIES) {
-    if (activity.kind === 'timer' && isTimerRunning(result, activity.type)) {
-      result = toggleTimer(result, activity.type, now);
-    }
+  const logs = {} as Record<ActivityType, ActivityLog>;
+  for (const type of Object.keys(day.logs) as ActivityType[]) {
+    const log = day.logs[type];
+    logs[type] =
+      log.kind === 'timer'
+        ? { ...log, sessions: log.sessions.map((s) => (s.end === null ? { ...s, end: now } : s)) }
+        : log;
   }
-  return { ...result, endedAt: now };
+  return { ...day, logs, endedAt: now };
 }

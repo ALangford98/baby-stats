@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fromLocalInputValue, toLocalInputValue } from '../utils/time';
 
 type StartTimeModalProps = {
   defaultTime: string; // ISO
@@ -6,14 +7,17 @@ type StartTimeModalProps = {
 };
 
 export function StartTimeModal({ defaultTime, onConfirm }: StartTimeModalProps) {
-  const initialValue = defaultTime.slice(0, 16);
+  const initialValue = toLocalInputValue(defaultTime);
   const [value, setValue] = useState(initialValue);
 
   const handleConfirm = () => {
+    // An untouched input still confirms the exact `defaultTime`: the input only
+    // has minute resolution, so re-parsing it would silently drop the seconds
+    // and milliseconds of the "now" the caller handed us.
     if (value === initialValue) {
       onConfirm(defaultTime);
     } else {
-      onConfirm(new Date(value).toISOString());
+      onConfirm(fromLocalInputValue(value));
     }
   };
 

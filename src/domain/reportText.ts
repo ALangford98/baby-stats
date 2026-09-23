@@ -1,4 +1,4 @@
-import type { ActivityType, Day, TimerLog, TimerSession } from '../types';
+import type { Day, TimerLog, TimerSession } from '../types';
 import { ACTIVITIES } from '../activities';
 
 export const STYLE_INSTRUCTION =
@@ -45,7 +45,10 @@ function bucketIndex(value: number, thresholds: number[]): number {
   return idx;
 }
 
-const COUNTER_TEMPLATES: Record<'lightDiaper' | 'mediumDiaper' | 'heavyDiaper' | 'spitUp', string[]> = {
+type CounterActivityType = 'lightDiaper' | 'mediumDiaper' | 'heavyDiaper' | 'spitUp';
+type TimerActivityType = 'nap' | 'tummyTime' | 'cryingFit';
+
+const COUNTER_TEMPLATES: Record<CounterActivityType, string[]> = {
   lightDiaper: [
     'Not a single light diaper today — skipped the easy ones entirely.',
     'A couple of light diapers — nice and breezy.',
@@ -72,7 +75,7 @@ const COUNTER_TEMPLATES: Record<'lightDiaper' | 'mediumDiaper' | 'heavyDiaper' |
   ],
 };
 
-const TIMER_TEMPLATES: Record<'nap' | 'tummyTime' | 'cryingFit', string[]> = {
+const TIMER_TEMPLATES: Record<TimerActivityType, string[]> = {
   nap: [
     'No naps today — everyone is running on fumes.',
     'A short nap snuck in there — better than nothing.',
@@ -99,11 +102,11 @@ export function generateOfflineReport(day: Day): string {
     const log = day.logs[activity.type];
     if (log.kind === 'counter') {
       const idx = bucketIndex(log.count, [1, 3, 6]);
-      return COUNTER_TEMPLATES[activity.type as keyof typeof COUNTER_TEMPLATES][idx];
+      return COUNTER_TEMPLATES[activity.type as CounterActivityType][idx];
     }
     const totalMinutes = totalTimerMs(log, now) / 60000;
     const idx = bucketIndex(totalMinutes, [1, 30, 90]);
-    return TIMER_TEMPLATES[activity.type as keyof typeof TIMER_TEMPLATES][idx];
+    return TIMER_TEMPLATES[activity.type as TimerActivityType][idx];
   });
   return ["Here's how today went:", ...lines].join('\n\n');
 }

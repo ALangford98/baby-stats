@@ -1,4 +1,4 @@
-import type { Day, Settings } from '../types';
+import type { ActivityConfig, Day, Settings } from '../types';
 import { buildStatsSummary, STYLE_INSTRUCTION } from './reportText';
 
 async function callAnthropic(apiKey: string, statsSummary: string): Promise<string> {
@@ -38,11 +38,11 @@ async function callOpenAi(apiKey: string, statsSummary: string): Promise<string>
   return data.choices[0].message.content as string;
 }
 
-export async function generateAiReport(day: Day, settings: Settings): Promise<string> {
+export async function generateAiReport(day: Day, settings: Settings, activities: ActivityConfig[]): Promise<string> {
   if (!settings.llmProvider || !settings.llmApiKey) {
     throw new Error('No LLM provider configured');
   }
-  const statsSummary = buildStatsSummary(day);
+  const statsSummary = buildStatsSummary(day, activities);
   return settings.llmProvider === 'anthropic'
     ? callAnthropic(settings.llmApiKey, statsSummary)
     : callOpenAi(settings.llmApiKey, statsSummary);

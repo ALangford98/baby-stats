@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { HistoryScreen } from './HistoryScreen';
 import { createEmptyDay } from '../domain/day';
+import { ACTIVITIES } from '../activities';
 
 describe('HistoryScreen', () => {
   it('shows a message when there is no history yet', () => {
@@ -11,7 +12,7 @@ describe('HistoryScreen', () => {
   });
 
   it('lists each past day and calls onSelect when tapped', async () => {
-    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES);
     const onSelect = vi.fn();
     render(<HistoryScreen history={[day]} onSelect={onSelect} onClose={vi.fn()} />);
 
@@ -23,8 +24,8 @@ describe('HistoryScreen', () => {
   // supported flow, so `day.date` is not a unique React key — startedAt is.
   it('renders two days from the same calendar date without duplicate keys', async () => {
     const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const morning = createEmptyDay('2026-09-23T08:00:00.000Z');
-    const evening = createEmptyDay('2026-09-23T18:00:00.000Z');
+    const morning = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES);
+    const evening = createEmptyDay('2026-09-23T18:00:00.000Z', ACTIVITIES);
     expect(morning.date).toBe(evening.date);
 
     const onSelect = vi.fn();
@@ -39,7 +40,7 @@ describe('HistoryScreen', () => {
   });
 
   it('deletes a day after the user confirms, without selecting it', async () => {
-    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES);
     const onSelect = vi.fn();
     const onDelete = vi.fn();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -53,7 +54,7 @@ describe('HistoryScreen', () => {
   });
 
   it('does not delete when the user cancels the confirmation', async () => {
-    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES);
     const onDelete = vi.fn();
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(<HistoryScreen history={[day]} onSelect={vi.fn()} onClose={vi.fn()} onDelete={onDelete} />);

@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useHistory } from './useHistory';
 import { createEmptyDay } from '../domain/day';
+import { ACTIVITIES } from '../activities';
 
 beforeEach(() => {
   localStorage.clear();
@@ -12,7 +13,7 @@ describe('useHistory', () => {
     const { result } = renderHook(() => useHistory());
     expect(result.current.history).toEqual([]);
 
-    const day = createEmptyDay('2026-09-23T08:00:00.000Z');
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES);
     act(() => result.current.addToHistory(day));
 
     expect(result.current.history).toEqual([day]);
@@ -22,7 +23,7 @@ describe('useHistory', () => {
 
   it('replaceHistory overwrites the full list, e.g. after a restore-by-code', () => {
     const { result } = renderHook(() => useHistory());
-    const restored = [createEmptyDay('2026-09-20T08:00:00.000Z')];
+    const restored = [createEmptyDay('2026-09-20T08:00:00.000Z', ACTIVITIES)];
     act(() => result.current.replaceHistory(restored));
 
     expect(result.current.history).toEqual(restored);
@@ -30,8 +31,8 @@ describe('useHistory', () => {
 
   it('removeFromHistory deletes one day by startedAt and persists it', () => {
     const { result } = renderHook(() => useHistory());
-    const dayA = createEmptyDay('2026-09-20T08:00:00.000Z');
-    const dayB = createEmptyDay('2026-09-21T08:00:00.000Z');
+    const dayA = createEmptyDay('2026-09-20T08:00:00.000Z', ACTIVITIES);
+    const dayB = createEmptyDay('2026-09-21T08:00:00.000Z', ACTIVITIES);
     act(() => result.current.replaceHistory([dayA, dayB]));
 
     act(() => result.current.removeFromHistory(dayA.startedAt));

@@ -1,5 +1,4 @@
-import type { Day, TimerLog, TimerSession } from '../types';
-import { ACTIVITIES } from '../activities';
+import type { ActivityConfig, Day, TimerLog, TimerSession } from '../types';
 
 export const STYLE_INSTRUCTION =
   "Write a short, funny, affectionate 3-5 sentence summary of this baby's day using the stats below. Keep it lighthearted, not clinical.";
@@ -20,21 +19,26 @@ function formatDuration(ms: number): string {
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
-export function buildStatsSummary(day: Day): string {
+function labelFor(type: string, activities: ActivityConfig[]): string {
+  return activities.find((a) => a.type === type)?.label ?? type;
+}
+
+export function buildStatsSummary(day: Day, activities: ActivityConfig[]): string {
   const now = day.endedAt ?? new Date().toISOString();
-  const lines = ACTIVITIES.map((activity) => {
-    const log = day.logs[activity.type];
+  const lines = Object.keys(day.logs).map((type) => {
+    const log = day.logs[type];
+    const label = labelFor(type, activities);
     if (log.kind === 'counter') {
-      return `${activity.label}: ${log.count}`;
+      return `${label}: ${log.count}`;
     }
     const totalMs = totalTimerMs(log, now);
-    return `${activity.label}: ${log.sessions.length} session(s), ${formatDuration(totalMs)} total`;
+    return `${label}: ${log.sessions.length} session(s), ${formatDuration(totalMs)} total`;
   });
   return lines.join('\n');
 }
 
-export function buildPromptText(day: Day): string {
-  return `${STYLE_INSTRUCTION}\n\n${buildStatsSummary(day)}`;
+export function buildPromptText(day: Day, activities: ActivityConfig[]): string {
+  return `${STYLE_INSTRUCTION}\n\n${buildStatsSummary(day, activities)}`;
 }
 
 function bucketIndex(value: number, thresholds: number[]): number {
@@ -96,17 +100,44 @@ const TIMER_TEMPLATES: Record<TimerActivityType, string[]> = {
   ],
 };
 
-export function generateOfflineReport(day: Day): string {
+function genericCounterLine(label: string, count: number): string {
+  const idx = bucketIndex(count, [1, 3, 6]);
+  return [
+    `No ${label} logged today.`,
+    `A couple of ${label} moments today.`,
+    `Several ${label} entries today.`,
+    `6+ ${label} - quite the day for that.`,
+  ][idx];
+}
+
+function genericTimerLine(label: string, totalMinutes: number): string {
+  const idx = bucketIndex(totalMinutes, [1, 30, 90]);
+  return [
+    `No ${label} today.`,
+    `A little bit of ${label} snuck in.`,
+    `A solid stretch of ${label} today.`,
+    `90+ minutes of ${label} - impressive.`,
+  ][idx];
+}
+
+export function generateOfflineReport(day: Day, activities: ActivityConfig[]): string {
   const now = day.endedAt ?? new Date().toISOString();
-  const lines = ACTIVITIES.map((activity) => {
-    const log = day.logs[activity.type];
+  const lines = Object.keys(day.logs).map((type) => {
+    const log = day.logs[type];
+    const label = labelFor(type, activities);
     if (log.kind === 'counter') {
-      const idx = bucketIndex(log.count, [1, 3, 6]);
-      return COUNTER_TEMPLATES[activity.type as CounterActivityType][idx];
+      if (type in COUNTER_TEMPLATES) {
+        const idx = bucketIndex(log.count, [1, 3, 6]);
+        return COUNTER_TEMPLATES[type as CounterActivityType][idx];
+      }
+      return genericCounterLine(label, log.count);
     }
     const totalMinutes = totalTimerMs(log, now) / 60000;
-    const idx = bucketIndex(totalMinutes, [1, 30, 90]);
-    return TIMER_TEMPLATES[activity.type as TimerActivityType][idx];
+    if (type in TIMER_TEMPLATES) {
+      const idx = bucketIndex(totalMinutes, [1, 30, 90]);
+      return TIMER_TEMPLATES[type as TimerActivityType][idx];
+    }
+    return genericTimerLine(label, totalMinutes);
   });
   return ["Here's how today went:", ...lines].join('\n\n');
 }

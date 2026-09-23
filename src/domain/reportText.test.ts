@@ -119,6 +119,20 @@ describe('custom activities in reports', () => {
     expect(generateOfflineReport(loggedDay, ACTIVITIES)).toMatch(/custom-abc12345/);
   });
 
+  it('omits a deleted custom activity that was never logged, instead of showing a zero-value line for its raw id', () => {
+    // Added mid-day (so it has a log entry) but never tapped, then deleted —
+    // the spec's own way to "rename" an activity is delete-and-re-add, so a
+    // stray zero-count entry for the old raw id would otherwise show up on
+    // every End Day right after.
+    const day = createEmptyDay(START, activitiesWithCustom);
+    const summary = buildStatsSummary(day, ACTIVITIES);
+    const report = generateOfflineReport(day, ACTIVITIES);
+    expect(summary).not.toContain('custom-abc12345');
+    expect(summary).not.toContain('custom-def67890');
+    expect(report).not.toMatch(/custom-abc12345/);
+    expect(report).not.toMatch(/custom-def67890/);
+  });
+
   // The label is free text the user typed — an apostrophe (or any other
   // character) must not break the generic template's string interpolation.
   it('handles a label containing an apostrophe without throwing or mangling the text', () => {

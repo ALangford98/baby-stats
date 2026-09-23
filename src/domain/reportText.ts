@@ -1,4 +1,4 @@
-import type { ActivityConfig, Day, TimerLog, TimerSession } from '../types';
+import type { ActivityConfig, ActivityLog, Day, TimerLog, TimerSession } from '../types';
 
 export const STYLE_INSTRUCTION =
   "Write a short, funny, affectionate 3-5 sentence summary of this baby's day using the stats below. Keep it lighthearted, not clinical.";
@@ -23,17 +23,28 @@ function labelFor(type: string, activities: ActivityConfig[]): string {
   return activities.find((a) => a.type === type)?.label ?? type;
 }
 
+// A log with no matching config and nothing logged against it is a deleted
+// custom activity that was never used — showing its raw id as a zero-value
+// line would be noise, not preserved history. A deleted activity that DOES
+// have real data still falls through to the raw-id label, per spec.
+function isEmptyOrphanLog(log: ActivityLog, activities: ActivityConfig[]): boolean {
+  if (activities.some((a) => a.type === log.type)) return false;
+  return log.kind === 'counter' ? log.count === 0 : log.sessions.length === 0;
+}
+
 export function buildStatsSummary(day: Day, activities: ActivityConfig[]): string {
   const now = day.endedAt ?? new Date().toISOString();
-  const lines = Object.keys(day.logs).map((type) => {
-    const log = day.logs[type];
-    const label = labelFor(type, activities);
-    if (log.kind === 'counter') {
-      return `${label}: ${log.count}`;
-    }
-    const totalMs = totalTimerMs(log, now);
-    return `${label}: ${log.sessions.length} session(s), ${formatDuration(totalMs)} total`;
-  });
+  const lines = Object.keys(day.logs)
+    .filter((type) => !isEmptyOrphanLog(day.logs[type], activities))
+    .map((type) => {
+      const log = day.logs[type];
+      const label = labelFor(type, activities);
+      if (log.kind === 'counter') {
+        return `${label}: ${log.count}`;
+      }
+      const totalMs = totalTimerMs(log, now);
+      return `${label}: ${log.sessions.length} session(s), ${formatDuration(totalMs)} total`;
+    });
   return lines.join('\n');
 }
 
@@ -122,22 +133,24 @@ function genericTimerLine(label: string, totalMinutes: number): string {
 
 export function generateOfflineReport(day: Day, activities: ActivityConfig[]): string {
   const now = day.endedAt ?? new Date().toISOString();
-  const lines = Object.keys(day.logs).map((type) => {
-    const log = day.logs[type];
-    const label = labelFor(type, activities);
-    if (log.kind === 'counter') {
-      if (type in COUNTER_TEMPLATES) {
-        const idx = bucketIndex(log.count, [1, 3, 6]);
-        return COUNTER_TEMPLATES[type as CounterActivityType][idx];
+  const lines = Object.keys(day.logs)
+    .filter((type) => !isEmptyOrphanLog(day.logs[type], activities))
+    .map((type) => {
+      const log = day.logs[type];
+      const label = labelFor(type, activities);
+      if (log.kind === 'counter') {
+        if (type in COUNTER_TEMPLATES) {
+          const idx = bucketIndex(log.count, [1, 3, 6]);
+          return COUNTER_TEMPLATES[type as CounterActivityType][idx];
+        }
+        return genericCounterLine(label, log.count);
       }
-      return genericCounterLine(label, log.count);
-    }
-    const totalMinutes = totalTimerMs(log, now) / 60000;
-    if (type in TIMER_TEMPLATES) {
-      const idx = bucketIndex(totalMinutes, [1, 30, 90]);
-      return TIMER_TEMPLATES[type as TimerActivityType][idx];
-    }
-    return genericTimerLine(label, totalMinutes);
-  });
+      const totalMinutes = totalTimerMs(log, now) / 60000;
+      if (type in TIMER_TEMPLATES) {
+        const idx = bucketIndex(totalMinutes, [1, 30, 90]);
+        return TIMER_TEMPLATES[type as TimerActivityType][idx];
+      }
+      return genericTimerLine(label, totalMinutes);
+    });
   return ["Here's how today went:", ...lines].join('\n\n');
 }

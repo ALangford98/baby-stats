@@ -6,7 +6,7 @@ import { fetchSyncedData, watchSyncedData } from './storage/firebaseSync';
 import { createEmptyDay } from './domain/day';
 import { saveSettings } from './storage/localStorage';
 import { ACTIVITIES } from './activities';
-import type { Day } from './types';
+import type { ActivityConfig, Day } from './types';
 
 vi.mock('./storage/firebaseSync', () => ({
   ensureAnonymousAuth: vi.fn().mockResolvedValue(undefined),
@@ -164,6 +164,28 @@ describe('App: recovery-code restore from Settings', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not reach that recovery code/i);
     // Still on Settings — the error is where the user triggered it.
     expect(screen.getByLabelText(/enter a different recovery code/i)).toBeInTheDocument();
+  });
+});
+
+describe('App: recovery-code restore applies the remote device\'s custom activities', () => {
+  it('restoring by code does not crash when the local device has a custom activity the remote day has no log for', async () => {
+    const localCustom: ActivityConfig = { type: 'custom-local001', kind: 'counter', label: 'Local Custom', icon: 'Droplet' };
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [localCustom] });
+    // The remote device has never heard of the local custom activity, so its
+    // day has no log entry for it and its own customActivities list is empty.
+    const remoteDay = createEmptyDay('2026-09-22T08:00:00.000Z', ACTIVITIES);
+    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: remoteDay, history: [], customActivities: [] });
+
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /settings/i }));
+    await userEvent.type(screen.getByLabelText(/enter a different recovery code/i), 'EXISTING123');
+    await userEvent.click(screen.getByRole('button', { name: /switch code/i }));
+
+    // Lands back on the main tracking screen without throwing, showing only
+    // the activities the restored settings now actually have logs for.
+    expect(await screen.findByRole('button', { name: /^light diaper$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^local custom$/i })).not.toBeInTheDocument();
   });
 });
 

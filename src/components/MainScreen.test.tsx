@@ -186,4 +186,29 @@ describe('MainScreen: custom activities', () => {
     expect(screen.queryByRole('dialog', { name: /^edit tummy medicine$/i })).not.toBeInTheDocument();
     vi.restoreAllMocks();
   });
+
+  it('does not crash when an activity config has no matching log on the current day', () => {
+    // Can happen when a device's settings and its current day briefly
+    // disagree (e.g. mid-sync) — the day simply has nothing to show yet
+    // for that activity, so it's skipped rather than crashing the screen.
+    const custom = { type: 'custom-orphan1', label: 'Orphan', kind: 'counter' as const, icon: 'Pill' as const };
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES); // day has no log for `custom`
+    const activities = combineActivities([custom]); // but the activities list includes it
+
+    render(
+      <MainScreen
+        day={day}
+        activities={activities}
+        onTap={vi.fn()}
+        onEditCounter={vi.fn()}
+        onEditTimer={vi.fn()}
+        onEndDay={vi.fn()}
+        onAddActivity={vi.fn()}
+        onDeleteActivity={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /^light diaper$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^orphan$/i })).not.toBeInTheDocument();
+  });
 });

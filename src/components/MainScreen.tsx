@@ -37,15 +37,20 @@ export function MainScreen({
   return (
     <div>
       <div className="main-screen__grid">
-        {activities.map((activity) => (
-          <ActivityButton
-            key={activity.type}
-            config={activity}
-            log={day.logs[activity.type]}
-            onTap={() => onTap(activity.type)}
-            onEdit={() => setEditingType(activity.type)}
-          />
-        ))}
+        {activities
+          // An activity config can briefly have no log on the current day
+          // (e.g. mid-sync, before the two settle together) — skip it rather
+          // than render a button with nothing to show or act on.
+          .filter((activity) => day.logs[activity.type] !== undefined)
+          .map((activity) => (
+            <ActivityButton
+              key={activity.type}
+              config={activity}
+              log={day.logs[activity.type]}
+              onTap={() => onTap(activity.type)}
+              onEdit={() => setEditingType(activity.type)}
+            />
+          ))}
         <AddActivityButton onClick={() => setAddingActivity(true)} />
       </div>
       <button type="button" className="main-screen__end-day" onClick={onEndDay}>

@@ -94,7 +94,7 @@ function Tracker() {
     setRestoreError(null);
     try {
       const remote = await fetchSyncedData(code);
-      updateSettings({ recoveryCode: code });
+      updateSettings(remote ? { recoveryCode: code, customActivities: remote.customActivities } : { recoveryCode: code });
       if (remote) {
         dayState.replaceDay(remote.currentDay);
         replaceHistory(remote.history);

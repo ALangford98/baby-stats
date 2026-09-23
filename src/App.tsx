@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
-import type { ActivityType, Day, TimerSession } from './types';
+import { useCallback, useMemo, useState } from 'react';
+import type { ActivityConfig, ActivityType, Day, TimerSession } from './types';
+import { combineActivities } from './activities';
 import { AppHeader } from './components/AppHeader';
 import { ConsentModal } from './components/ConsentModal';
 import { RecoveryCodeStep } from './components/RecoveryCodeStep';
@@ -72,6 +73,8 @@ function Tracker() {
   const { settings, updateSettings } = useSettings();
   const { history, addToHistory, replaceHistory, removeFromHistory } = useHistory();
 
+  const activities = useMemo(() => combineActivities(settings.customActivities), [settings.customActivities]);
+
   // Applies a change that arrived from another device using the same
   // recovery code (e.g. the other parent's phone). Kept stable via
   // useCallback so the listener in useCloudSync only resubscribes when the
@@ -80,11 +83,12 @@ function Tracker() {
     (data: SyncedData) => {
       dayState.replaceDay(data.currentDay);
       replaceHistory(data.history);
+      updateSettings({ customActivities: data.customActivities });
     },
-    [dayState.replaceDay, replaceHistory],
+    [dayState.replaceDay, replaceHistory, updateSettings],
   );
 
-  useCloudSync(settings.recoveryCode, dayState.day, history, handleRemoteUpdate);
+  useCloudSync(settings.recoveryCode, dayState.day, history, settings.customActivities, handleRemoteUpdate);
 
   async function handleUseExistingCode(code: string) {
     setRestoreError(null);
@@ -115,7 +119,7 @@ function Tracker() {
     // One write, not two: `setDayReport` closes over the pre-`finishDay` `day`,
     // so calling it here would persist a stale copy over what `finishDay` just
     // saved — losing `endedAt` and the closed timer sessions on disk.
-    dayState.replaceDay({ ...ended, report: generateOfflineReport(ended), reportSource: 'offline' });
+    dayState.replaceDay({ ...ended, report: generateOfflineReport(ended, activities), reportSource: 'offline' });
     setAiError(null);
     setScreen('report');
   }
@@ -125,7 +129,7 @@ function Tracker() {
     setAiLoading(true);
     setAiError(null);
     try {
-      const text = await generateAiReport(dayState.day, settings);
+      const text = await generateAiReport(dayState.day, settings, activities);
       dayState.setDayReport(text, 'ai');
     } catch (err) {
       setAiError(err instanceof Error ? err.message : 'AI report generation failed.');
@@ -168,7 +172,7 @@ function Tracker() {
           onOpenHistory={() => setScreen('history')}
           onOpenSettings={() => setScreen('settings')}
         />
-        <StartTimeModal defaultTime={new Date().toISOString()} onConfirm={(startedAt) => { dayState.startDay(startedAt); setScreen('main'); }} />
+        <StartTimeModal defaultTime={new Date().toISOString()} onConfirm={(startedAt) => { dayState.startDay(startedAt, activities); setScreen('main'); }} />
       </div>
     );
   }
@@ -200,13 +204,14 @@ function Tracker() {
   }
 
   if (screen === 'historyDetail' && selectedHistoryDay) {
-    return <HistoryDetail day={selectedHistoryDay} onBack={() => setScreen('history')} />;
+    return <HistoryDetail day={selectedHistoryDay} activities={activities} onBack={() => setScreen('history')} />;
   }
 
   if (screen === 'report' && dayState.day) {
     return (
       <ReportScreen
         day={dayState.day}
+        activities={activities}
         settings={settings}
         onGenerateAi={handleGenerateAi}
         aiLoading={aiLoading}
@@ -226,10 +231,18 @@ function Tracker() {
         />
         <MainScreen
           day={dayState.day}
+          activities={activities}
           onTap={handleTap}
           onEditCounter={dayState.setCounterCount}
           onEditTimer={(type: ActivityType, sessions: TimerSession[]) => dayState.setTimerSessions(type, sessions)}
           onEndDay={handleEndDay}
+          onAddActivity={(activity: ActivityConfig) => {
+            dayState.addActivity(activity);
+            updateSettings({ customActivities: [...settings.customActivities, activity] });
+          }}
+          onDeleteActivity={(type: ActivityType) =>
+            updateSettings({ customActivities: settings.customActivities.filter((a) => a.type !== type) })
+          }
         />
       </div>
     );
@@ -242,7 +255,7 @@ function Tracker() {
         onOpenHistory={() => setScreen('history')}
         onOpenSettings={() => setScreen('settings')}
       />
-      <StartTimeModal defaultTime={new Date().toISOString()} onConfirm={(startedAt) => { dayState.startDay(startedAt); setScreen('main'); }} />
+      <StartTimeModal defaultTime={new Date().toISOString()} onConfirm={(startedAt) => { dayState.startDay(startedAt, activities); setScreen('main'); }} />
     </div>
   );
 }

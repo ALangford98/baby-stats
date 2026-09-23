@@ -5,6 +5,7 @@ import { App } from './App';
 import { fetchSyncedData, watchSyncedData } from './storage/firebaseSync';
 import { createEmptyDay } from './domain/day';
 import { saveSettings } from './storage/localStorage';
+import { ACTIVITIES } from './activities';
 import type { Day } from './types';
 
 vi.mock('./storage/firebaseSync', () => ({
@@ -110,7 +111,7 @@ describe('App: End Day persistence', () => {
 
 describe('App: returning user', () => {
   it('skips both the consent modal and the recovery-code onboarding step', () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
 
     render(<App />);
 
@@ -129,7 +130,7 @@ describe('App: returning user', () => {
 
 describe('App: multi-device sync', () => {
   it('applies a change reported by the live listener, e.g. from the other parent\'s phone', async () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
     render(<App />);
 
     // Confirm the default start time to land on the main tracking screen,
@@ -140,8 +141,8 @@ describe('App: multi-device sync', () => {
     // Simulate another device finishing a day and it syncing back down —
     // the mocked watchSyncedData captured the onChange callback App passed in.
     const onRemoteChange = vi.mocked(watchSyncedData).mock.calls[0][1];
-    const remoteDay = createEmptyDay('2026-09-22T08:00:00.000Z');
-    onRemoteChange({ currentDay: null, history: [remoteDay] });
+    const remoteDay = createEmptyDay('2026-09-22T08:00:00.000Z', ACTIVITIES);
+    onRemoteChange({ currentDay: null, history: [remoteDay], customActivities: [] });
 
     await userEvent.click(screen.getByRole('button', { name: /history/i }));
     expect(screen.getByText(remoteDay.date)).toBeInTheDocument();
@@ -163,5 +164,27 @@ describe('App: recovery-code restore from Settings', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not reach that recovery code/i);
     // Still on Settings — the error is where the user triggered it.
     expect(screen.getByLabelText(/enter a different recovery code/i)).toBeInTheDocument();
+  });
+});
+
+describe('App: custom activities', () => {
+  it('adding a custom counter makes it tappable immediately and appear in the end-of-day report', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /ok|yes|agree/i }));
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await userEvent.click(screen.getByRole('button', { name: /confirm|start/i }));
+
+    await userEvent.click(screen.getByRole('button', { name: /add activity/i }));
+    await userEvent.type(screen.getByLabelText(/label/i), 'Tummy medicine');
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    const customButton = screen.getByRole('button', { name: /^tummy medicine$/i });
+    await userEvent.click(customButton);
+    await userEvent.click(customButton);
+
+    await userEvent.click(screen.getByRole('button', { name: /end day/i }));
+
+    expect(screen.getByText(/tummy medicine: 2/i)).toBeInTheDocument();
   });
 });

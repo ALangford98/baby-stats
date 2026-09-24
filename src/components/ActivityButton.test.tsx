@@ -57,6 +57,16 @@ describe('ActivityButton', () => {
     expect(screen.getByText('2X - 01H:30M')).toBeInTheDocument();
   });
 
+  it('shows a plain count, and never an active state, for a count-only timer', () => {
+    const instant = { start: '2026-09-23T09:00:00.000Z', end: '2026-09-23T09:00:00.000Z' };
+    const log: TimerLog = { kind: 'timer', type: 'nap', sessions: [instant, instant] };
+    render(<ActivityButton config={{ ...napConfig, countOnly: true }} log={log} onTap={vi.fn()} onEdit={vi.fn()} />);
+
+    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.queryByText(/X - /)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^nap$/i })).not.toHaveClass('activity-button__main--active');
+  });
+
   it('calls onEdit when the edit icon is tapped, without triggering onTap', async () => {
     const log: CounterLog = { kind: 'counter', type: 'lightDiaper', count: 0 };
     const onTap = vi.fn();

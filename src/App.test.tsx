@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
-import { fetchSyncedData, watchSyncedData } from './storage/firebaseSync';
+import { fetchSyncedData, pushSyncedData, watchSyncedData } from './storage/firebaseSync';
 import { createEmptyDay } from './domain/day';
 import { saveSettings } from './storage/localStorage';
 import { ACTIVITIES } from './activities';
@@ -15,6 +15,7 @@ vi.mock('./storage/firebaseSync', () => ({
   // Real watchSyncedData returns an unsubscribe function; no test here
   // exercises a remote update arriving, so a no-op subscription is enough.
   watchSyncedData: vi.fn().mockReturnValue(() => {}),
+  isCloudSyncConfigured: vi.fn().mockReturnValue(true),
 }));
 
 beforeEach(() => {
@@ -112,7 +113,7 @@ describe('App: End Day persistence', () => {
 
 describe('App: returning user', () => {
   it('skips both the consent modal and the recovery-code onboarding step', () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
 
     render(<App />);
 
@@ -131,7 +132,7 @@ describe('App: returning user', () => {
 
 describe('App: multi-device sync', () => {
   it('applies a change reported by the live listener, e.g. from the other parent\'s phone', async () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
     render(<App />);
 
     // Confirm the default start time to land on the main tracking screen,
@@ -143,7 +144,7 @@ describe('App: multi-device sync', () => {
     // the mocked watchSyncedData captured the onChange callback App passed in.
     const onRemoteChange = vi.mocked(watchSyncedData).mock.calls[0][1];
     const remoteDay = createEmptyDay('2026-09-22T08:00:00.000Z', ACTIVITIES);
-    onRemoteChange({ currentDay: null, history: [remoteDay], customActivities: [] });
+    onRemoteChange({ currentDay: null, history: [remoteDay], customActivities: [], countOnlyTimers: [] });
 
     await userEvent.click(screen.getByRole('button', { name: /history/i }));
     expect(screen.getByText(remoteDay.date)).toBeInTheDocument();
@@ -170,8 +171,8 @@ describe('App: recovery-code restore from Settings', () => {
 
 describe('App: joining a partner\'s session by code', () => {
   it('normalizes a lowercase, spaced code before looking it up', async () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
-    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: null, history: [], customActivities: [] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
+    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: null, history: [], customActivities: [], countOnlyTimers: [] });
     render(<App />);
 
     await userEvent.click(screen.getByRole('button', { name: /settings/i }));
@@ -182,7 +183,7 @@ describe('App: joining a partner\'s session by code', () => {
   });
 
   it('refuses to switch to a code that has no session behind it', async () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
     render(<App />); // fetchSyncedData resolves null: no such session
 
     await userEvent.click(screen.getByRole('button', { name: /settings/i }));
@@ -194,7 +195,7 @@ describe('App: joining a partner\'s session by code', () => {
   });
 
   it('explains a permission-denied failure instead of blaming the connection', async () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
     vi.mocked(fetchSyncedData).mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' }));
     render(<App />);
 
@@ -208,9 +209,9 @@ describe('App: joining a partner\'s session by code', () => {
 
 describe('App: share links', () => {
   it('asks before joining the session in a share link, then switches to it', async () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
     const remoteDay = createEmptyDay('2026-09-22T08:00:00.000Z', ACTIVITIES);
-    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: remoteDay, history: [], customActivities: [] });
+    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: remoteDay, history: [], customActivities: [], countOnlyTimers: [] });
     window.history.replaceState(null, '', '/?join=PARTNER234');
     render(<App />);
 
@@ -226,7 +227,7 @@ describe('App: share links', () => {
   });
 
   it('leaves this device\'s session alone when the invite is declined', async () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
     window.history.replaceState(null, '', '/?join=PARTNER234');
     render(<App />);
 
@@ -238,7 +239,7 @@ describe('App: share links', () => {
   });
 
   it('shows the confirmation after consent for a brand-new device, skipping recovery-code onboarding on join', async () => {
-    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: null, history: [], customActivities: [] });
+    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: null, history: [], customActivities: [], countOnlyTimers: [] });
     window.history.replaceState(null, '', '/?join=PARTNER234');
     render(<App />);
 
@@ -250,7 +251,7 @@ describe('App: share links', () => {
   });
 
   it('keeps the confirmation open with an error when the linked session does not exist', async () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
     window.history.replaceState(null, '', '/?join=PARTNER234');
     render(<App />);
 
@@ -261,7 +262,7 @@ describe('App: share links', () => {
   });
 
   it('ignores a link to the session this device is already in', () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
     window.history.replaceState(null, '', '/?join=ABCD123456');
     render(<App />);
 
@@ -272,11 +273,11 @@ describe('App: share links', () => {
 describe('App: recovery-code restore applies the remote device\'s custom activities', () => {
   it('restoring by code does not crash when the local device has a custom activity the remote day has no log for', async () => {
     const localCustom: ActivityConfig = { type: 'custom-local001', kind: 'counter', label: 'Local Custom', icon: 'Droplet' };
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [localCustom] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [localCustom], countOnlyTimers: [] });
     // The remote device has never heard of the local custom activity, so its
     // day has no log entry for it and its own customActivities list is empty.
     const remoteDay = createEmptyDay('2026-09-22T08:00:00.000Z', ACTIVITIES);
-    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: remoteDay, history: [], customActivities: [] });
+    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: remoteDay, history: [], customActivities: [], countOnlyTimers: [] });
 
     render(<App />);
 
@@ -293,7 +294,7 @@ describe('App: recovery-code restore applies the remote device\'s custom activit
 
 describe('App: built-in activities added after a day started', () => {
   it('backfills a missing built-in (Feeding) into the running day so its button appears right away', () => {
-    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
     const oldDay = createEmptyDay('2026-09-24T08:00:00.000Z', ACTIVITIES.filter((a) => a.type !== 'feeding'));
     localStorage.setItem('babystats:currentDay', JSON.stringify(oldDay));
 
@@ -301,6 +302,41 @@ describe('App: built-in activities added after a day started', () => {
 
     expect(screen.getByRole('button', { name: /^feeding$/i })).toBeInTheDocument();
     expect(persistedCurrentDay()!.logs.feeding).toEqual({ kind: 'counter', type: 'feeding', count: 0 });
+  });
+});
+
+describe('App: count-only timers', () => {
+  it('turning off "Use timer" makes taps count instead of starting a timer, and the choice persists', async () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: /confirm|start/i }));
+
+    await userEvent.click(screen.getByRole('button', { name: /edit nap/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /use timer/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    const nap = screen.getByRole('button', { name: /^nap$/i });
+    await userEvent.click(nap);
+    await userEvent.click(nap);
+
+    expect(nap).not.toHaveClass('activity-button__main--active');
+    expect(nap).toHaveTextContent('2');
+    expect(JSON.parse(localStorage.getItem('babystats:settings')!).countOnlyTimers).toEqual(['nap']);
+    const sessions = (persistedCurrentDay()!.logs.nap as { sessions: { start: string; end: string | null }[] }).sessions;
+    expect(sessions).toHaveLength(2);
+    expect(sessions.every((s) => s.end === s.start)).toBe(true);
+  });
+});
+
+describe('App: cloud sync status', () => {
+  it('shows a sync failure in Settings instead of hiding it', async () => {
+    vi.mocked(pushSyncedData).mockRejectedValueOnce(Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' }));
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /settings/i }));
+
+    expect(await screen.findByTestId('sync-status')).toHaveTextContent(/not working: permission-denied/i);
   });
 });
 

@@ -1,4 +1,4 @@
-import type { ActivityConfig, IconName } from './types';
+import type { ActivityConfig, ActivityType, IconName } from './types';
 
 export type { ActivityConfig, ActivityKind } from './types';
 
@@ -27,6 +27,8 @@ export const ICON_OPTIONS: IconName[] = [
   'Music',
 ];
 
-export function combineActivities(customActivities: ActivityConfig[]): ActivityConfig[] {
-  return [...ACTIVITIES, ...customActivities];
+export function combineActivities(customActivities: ActivityConfig[], countOnlyTimers: ActivityType[] = []): ActivityConfig[] {
+  return [...ACTIVITIES, ...customActivities].map((activity) =>
+    activity.kind === 'timer' && countOnlyTimers.includes(activity.type) ? { ...activity, countOnly: true } : activity,
+  );
 }

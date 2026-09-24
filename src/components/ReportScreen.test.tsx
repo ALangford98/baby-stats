@@ -8,8 +8,8 @@ import type { Settings } from '../types';
 
 const baseDay = { ...createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES), endedAt: '2026-09-23T20:00:00.000Z', report: 'Offline report text', reportSource: 'offline' as const };
 
-const settingsNoKey: Settings = { recoveryCode: 'X', llmProvider: null, llmApiKey: null, customActivities: [] };
-const settingsWithKey: Settings = { recoveryCode: 'X', llmProvider: 'anthropic', llmApiKey: 'sk-test', customActivities: [] };
+const settingsNoKey: Settings = { recoveryCode: 'X', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] };
+const settingsWithKey: Settings = { recoveryCode: 'X', llmProvider: 'anthropic', llmApiKey: 'sk-test', customActivities: [], countOnlyTimers: [] };
 
 beforeEach(() => {
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });

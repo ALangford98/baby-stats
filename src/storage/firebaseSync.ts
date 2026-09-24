@@ -1,9 +1,14 @@
 import { signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirebaseServices } from './firebaseClient';
-import type { ActivityConfig, Day } from '../types';
+import type { ActivityConfig, ActivityType, Day } from '../types';
 
-export type SyncedData = { currentDay: Day | null; history: Day[]; customActivities: ActivityConfig[] };
+export type SyncedData = {
+  currentDay: Day | null;
+  history: Day[];
+  customActivities: ActivityConfig[];
+  countOnlyTimers: ActivityType[];
+};
 
 // A remote document can be missing fields or be outright malformed. Passing
 // that through would let `undefined` reach `saveCurrentDay`/`saveHistory`,
@@ -23,9 +28,25 @@ function isSyncedDataShape(value: unknown): value is { currentDay: unknown; hist
   return typeof currentDay === 'object' && currentDay !== null && 'logs' in currentDay;
 }
 
-function validCustomActivities(value: unknown): ActivityConfig[] | null {
+// Fields added after launch: absent means "written by an older version" and
+// defaults to empty; present but not a list means the document is malformed.
+function optionalList<T>(value: unknown): T[] | null {
   if (value === undefined) return [];
-  return Array.isArray(value) ? (value as ActivityConfig[]) : null;
+  return Array.isArray(value) ? (value as T[]) : null;
+}
+
+function parseSyncedData(data: unknown): SyncedData | null {
+  if (!isSyncedDataShape(data)) return null;
+  const extra = data as { customActivities?: unknown; countOnlyTimers?: unknown };
+  const customActivities = optionalList<ActivityConfig>(extra.customActivities);
+  const countOnlyTimers = optionalList<ActivityType>(extra.countOnlyTimers);
+  if (customActivities === null || countOnlyTimers === null) return null;
+  return { currentDay: data.currentDay as Day | null, history: data.history as Day[], customActivities, countOnlyTimers };
+}
+
+/** Whether this build was given Firebase configuration at all. */
+export function isCloudSyncConfigured(): boolean {
+  return getFirebaseServices() !== null;
 }
 
 export async function ensureAnonymousAuth(): Promise<void> {
@@ -45,11 +66,7 @@ export async function fetchSyncedData(recoveryCode: string): Promise<SyncedData 
   await ensureAnonymousAuth();
   const snapshot = await getDoc(doc(services.db, 'users', recoveryCode));
   if (!snapshot.exists()) return null;
-  const data: unknown = snapshot.data();
-  if (!isSyncedDataShape(data)) return null;
-  const customActivities = validCustomActivities((data as { customActivities?: unknown }).customActivities);
-  if (customActivities === null) return null;
-  return { currentDay: data.currentDay as Day | null, history: data.history as Day[], customActivities };
+  return parseSyncedData(snapshot.data());
 }
 
 export async function pushSyncedData(recoveryCode: string, data: SyncedData): Promise<void> {
@@ -59,6 +76,7 @@ export async function pushSyncedData(recoveryCode: string, data: SyncedData): Pr
     currentDay: data.currentDay,
     history: data.history,
     customActivities: data.customActivities,
+    countOnlyTimers: data.countOnlyTimers,
   });
 }
 
@@ -70,16 +88,21 @@ export async function pushSyncedData(recoveryCode: string, data: SyncedData): Pr
  * ourselves. Returns an unsubscribe function; a no-op one when cloud sync
  * isn't configured, so callers never need a null check.
  */
-export function watchSyncedData(recoveryCode: string, onChange: (data: SyncedData) => void): () => void {
+export function watchSyncedData(
+  recoveryCode: string,
+  onChange: (data: SyncedData) => void,
+  onError: (error: unknown) => void = () => {},
+): () => void {
   const services = getFirebaseServices();
   if (!services) return () => {};
-  return onSnapshot(doc(services.db, 'users', recoveryCode), (snapshot) => {
-    if (snapshot.metadata.hasPendingWrites) return;
-    if (!snapshot.exists()) return;
-    const data: unknown = snapshot.data();
-    if (!isSyncedDataShape(data)) return;
-    const customActivities = validCustomActivities((data as { customActivities?: unknown }).customActivities);
-    if (customActivities === null) return;
-    onChange({ currentDay: data.currentDay as Day | null, history: data.history as Day[], customActivities });
-  });
+  return onSnapshot(
+    doc(services.db, 'users', recoveryCode),
+    (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      if (!snapshot.exists()) return;
+      const parsed = parseSyncedData(snapshot.data());
+      if (parsed) onChange(parsed);
+    },
+    onError,
+  );
 }

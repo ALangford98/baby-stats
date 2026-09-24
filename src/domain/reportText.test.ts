@@ -147,3 +147,14 @@ describe('custom activities in reports', () => {
     expect(generateOfflineReport(day, activitiesList)).toContain("Baby's medicine");
   });
 });
+
+describe('count-only timers in reports', () => {
+  it('reports a count-only timer by how many times it happened, not by duration', () => {
+    const activities = combineActivities([], ['nap']);
+    const instant = { start: '2026-09-23T09:00:00.000Z', end: '2026-09-23T09:00:00.000Z' };
+    const day = setTimerSessions(createEmptyDay(START, activities), 'nap', [instant, instant, instant]);
+
+    expect(buildStatsSummary(day, activities)).toContain('Nap: 3');
+    expect(generateOfflineReport(day, activities)).toContain('Several Nap entries today.');
+  });
+});

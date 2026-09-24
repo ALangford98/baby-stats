@@ -12,7 +12,7 @@ afterEach(() => {
 
 describe('generateAiReport', () => {
   it('throws if no provider/key is configured', async () => {
-    const settings: Settings = { recoveryCode: 'X', llmProvider: null, llmApiKey: null, customActivities: [] };
+    const settings: Settings = { recoveryCode: 'X', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] };
     await expect(generateAiReport(day, settings, ACTIVITIES)).rejects.toThrow('No LLM provider configured');
   });
 
@@ -22,7 +22,7 @@ describe('generateAiReport', () => {
       json: async () => ({ content: [{ text: 'A very funny anthropic report.' }] }),
     });
     vi.stubGlobal('fetch', fetchMock);
-    const settings: Settings = { recoveryCode: 'X', llmProvider: 'anthropic', llmApiKey: 'sk-ant-test', customActivities: [] };
+    const settings: Settings = { recoveryCode: 'X', llmProvider: 'anthropic', llmApiKey: 'sk-ant-test', customActivities: [], countOnlyTimers: [] };
 
     const result = await generateAiReport(day, settings, ACTIVITIES);
 
@@ -38,7 +38,7 @@ describe('generateAiReport', () => {
       json: async () => ({ choices: [{ message: { content: 'A very funny openai report.' } }] }),
     });
     vi.stubGlobal('fetch', fetchMock);
-    const settings: Settings = { recoveryCode: 'X', llmProvider: 'openai', llmApiKey: 'sk-openai-test', customActivities: [] };
+    const settings: Settings = { recoveryCode: 'X', llmProvider: 'openai', llmApiKey: 'sk-openai-test', customActivities: [], countOnlyTimers: [] };
 
     const result = await generateAiReport(day, settings, ACTIVITIES);
 
@@ -50,7 +50,7 @@ describe('generateAiReport', () => {
 
   it('throws a descriptive error when the API responds with a non-2xx status', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401 }));
-    const settings: Settings = { recoveryCode: 'X', llmProvider: 'anthropic', llmApiKey: 'bad-key', customActivities: [] };
+    const settings: Settings = { recoveryCode: 'X', llmProvider: 'anthropic', llmApiKey: 'bad-key', customActivities: [], countOnlyTimers: [] };
 
     await expect(generateAiReport(day, settings, ACTIVITIES)).rejects.toThrow('Anthropic API error: 401');
   });

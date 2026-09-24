@@ -17,7 +17,7 @@ vi.mock('firebase/firestore', () => ({
   doc: (db: any, coll: any, id: any) => docMock(db, coll, id),
   getDoc: (ref: any) => getDocMock(ref),
   setDoc: (ref: any, data: any) => setDocMock(ref, data),
-  onSnapshot: (ref: any, callback: any) => onSnapshotMock(ref, callback),
+  onSnapshot: (ref: any, callback: any, onError: any) => onSnapshotMock(ref, callback, onError),
 }));
 
 import { ensureAnonymousAuth, fetchSyncedData, pushSyncedData, watchSyncedData } from './firebaseSync';
@@ -61,7 +61,7 @@ describe('fetchSyncedData', () => {
   });
 
   it('returns the stored data when the document exists', async () => {
-    const data = { currentDay: null, history: [], customActivities: [] };
+    const data = { currentDay: null, history: [], customActivities: [], countOnlyTimers: [] };
     getDocMock.mockResolvedValue({ exists: () => true, data: () => data });
     const result = await fetchSyncedData('REALCODE01');
     expect(result).toEqual(data);
@@ -96,7 +96,7 @@ describe('fetchSyncedData', () => {
   });
 
   it('accepts a well-formed document containing a real day', async () => {
-    const data = { currentDay: createEmptyDay('2026-09-23T08:00:00.000Z', []), history: [], customActivities: [] };
+    const data = { currentDay: createEmptyDay('2026-09-23T08:00:00.000Z', []), history: [], customActivities: [], countOnlyTimers: [] };
     getDocMock.mockResolvedValue({ exists: () => true, data: () => data });
     await expect(fetchSyncedData('REALCODE01')).resolves.toEqual(data);
   });
@@ -105,7 +105,15 @@ describe('fetchSyncedData', () => {
     const legacyData = { currentDay: null, history: [] }; // no customActivities field at all
     getDocMock.mockResolvedValue({ exists: () => true, data: () => legacyData });
     const result = await fetchSyncedData('REALCODE01');
-    expect(result).toEqual({ currentDay: null, history: [], customActivities: [] });
+    expect(result).toEqual({ currentDay: null, history: [], customActivities: [], countOnlyTimers: [] });
+  });
+
+  it('rejects a remote document whose countOnlyTimers field is present but not an array', async () => {
+    getDocMock.mockResolvedValue({
+      exists: () => true,
+      data: () => ({ currentDay: null, history: [], countOnlyTimers: 'nap' }),
+    });
+    await expect(fetchSyncedData('REALCODE01')).resolves.toBeNull();
   });
 
   it('rejects a remote document whose customActivities field is present but not an array', async () => {
@@ -118,7 +126,7 @@ describe('fetchSyncedData', () => {
 
   it('accepts and returns a document with a well-formed customActivities list', async () => {
     const custom: ActivityConfig = { type: 'custom-abc12345', label: 'Tummy medicine', kind: 'counter', icon: 'Pill' };
-    const data = { currentDay: null, history: [], customActivities: [custom] };
+    const data = { currentDay: null, history: [], customActivities: [custom], countOnlyTimers: [] };
     getDocMock.mockResolvedValue({ exists: () => true, data: () => data });
     await expect(fetchSyncedData('REALCODE01')).resolves.toEqual(data);
   });
@@ -127,11 +135,11 @@ describe('fetchSyncedData', () => {
 describe('pushSyncedData', () => {
   it('writes currentDay, history, and customActivities, never any settings/API key fields', async () => {
     const day = createEmptyDay('2026-09-23T08:00:00.000Z', []);
-    await pushSyncedData('REALCODE01', { currentDay: day, history: [], customActivities: [] });
+    await pushSyncedData('REALCODE01', { currentDay: day, history: [], customActivities: [], countOnlyTimers: [] });
 
     expect(setDocMock).toHaveBeenCalledTimes(1);
     const [, payload] = setDocMock.mock.calls[0];
-    expect(Object.keys(payload).sort()).toEqual(['currentDay', 'customActivities', 'history']);
+    expect(Object.keys(payload).sort()).toEqual(['countOnlyTimers', 'currentDay', 'customActivities', 'history']);
     expect(JSON.stringify(payload)).not.toContain('llmApiKey');
   });
 });
@@ -143,7 +151,7 @@ describe('watchSyncedData', () => {
 
     expect(onSnapshotMock).toHaveBeenCalledTimes(1);
     const [, callback] = onSnapshotMock.mock.calls[0];
-    const data = { currentDay: null, history: [], customActivities: [] };
+    const data = { currentDay: null, history: [], customActivities: [], countOnlyTimers: [] };
     callback({ metadata: { hasPendingWrites: false }, exists: () => true, data: () => data });
 
     expect(onChange).toHaveBeenCalledWith(data);
@@ -159,10 +167,21 @@ describe('watchSyncedData', () => {
     callback({
       metadata: { hasPendingWrites: true },
       exists: () => true,
-      data: () => ({ currentDay: null, history: [], customActivities: [] }),
+      data: () => ({ currentDay: null, history: [], customActivities: [], countOnlyTimers: [] }),
     });
 
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('forwards listener errors (e.g. permission denied) so they can be shown', () => {
+    const onError = vi.fn();
+    watchSyncedData('REALCODE01', vi.fn(), onError);
+
+    const [, , errorCallback] = onSnapshotMock.mock.calls[0];
+    const error = Object.assign(new Error('denied'), { code: 'permission-denied' });
+    errorCallback(error);
+
+    expect(onError).toHaveBeenCalledWith(error);
   });
 
   it('ignores a malformed remote snapshot instead of forwarding it', () => {
@@ -198,7 +217,7 @@ describe('when Firebase is not configured (no .env, the shipped default)', () =>
 
   it('pushSyncedData is a silent no-op', async () => {
     const day = createEmptyDay('2026-09-23T08:00:00.000Z', []);
-    await expect(pushSyncedData('REALCODE01', { currentDay: day, history: [], customActivities: [] })).resolves.toBeUndefined();
+    await expect(pushSyncedData('REALCODE01', { currentDay: day, history: [], customActivities: [], countOnlyTimers: [] })).resolves.toBeUndefined();
     expect(setDocMock).not.toHaveBeenCalled();
   });
 

@@ -28,6 +28,10 @@ export type ActivityConfig = {
   label: string;
   kind: ActivityKind;
   icon: IconName;
+  // Timer activities only: tapping logs an instant, zero-length session
+  // instead of starting/stopping a timer. Derived from
+  // `Settings.countOnlyTimers`, never stored on the config itself.
+  countOnly?: boolean;
 };
 
 export type CounterLog = {
@@ -65,4 +69,6 @@ export type Settings = {
   llmProvider: LlmProvider | null;
   llmApiKey: string | null;
   customActivities: ActivityConfig[];
+  // Timer activities the household has chosen to just count, not time.
+  countOnlyTimers: ActivityType[];
 };

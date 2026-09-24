@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { LlmProvider, Settings } from '../types';
 import { Dialog } from './Dialog';
+import type { SyncStatus } from '../hooks/useCloudSync';
 
 type SettingsScreenProps = {
   settings: Settings;
@@ -8,9 +9,23 @@ type SettingsScreenProps = {
   onClose: () => void;
   onEnterRecoveryCode: (code: string) => void;
   restoreError?: string | null;
+  syncStatus?: SyncStatus;
 };
 
-export function SettingsScreen({ settings, onUpdate, onClose, onEnterRecoveryCode, restoreError }: SettingsScreenProps) {
+function describeSyncStatus(status: SyncStatus): string {
+  switch (status.state) {
+    case 'off':
+      return 'Off — this version of the app has no Firebase settings.';
+    case 'connecting':
+      return 'Connecting…';
+    case 'synced':
+      return 'Working';
+    case 'error':
+      return `Not working: ${status.message}`;
+  }
+}
+
+export function SettingsScreen({ settings, onUpdate, onClose, onEnterRecoveryCode, restoreError, syncStatus }: SettingsScreenProps) {
   const [newCode, setNewCode] = useState('');
   const [apiKey, setApiKey] = useState(settings.llmApiKey ?? '');
 
@@ -26,6 +41,8 @@ export function SettingsScreen({ settings, onUpdate, onClose, onEnterRecoveryCod
 
       <p>Your recovery code:</p>
       <strong>{settings.recoveryCode}</strong>
+
+      {syncStatus && <p data-testid="sync-status">Cloud sync: {describeSyncStatus(syncStatus)}</p>}
 
       <label htmlFor="provider-select">LLM provider</label>
       <select

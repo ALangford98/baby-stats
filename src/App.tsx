@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ActivityConfig, ActivityType, Day, TimerSession } from './types';
 import { ACTIVITIES, combineActivities } from './activities';
-import { addActivityToDay } from './domain/day';
+import { addActivityToDay, logInstantSession } from './domain/day';
 import { AppHeader } from './components/AppHeader';
 import { ConsentModal } from './components/ConsentModal';
 import { RecoveryCodeStep } from './components/RecoveryCodeStep';
@@ -112,7 +112,10 @@ function Tracker() {
     dayState.replaceDay(missing.reduce((next, activity) => addActivityToDay(next, activity), day));
   }, [dayState.day, dayState.replaceDay]);
 
-  const activities = useMemo(() => combineActivities(settings.customActivities), [settings.customActivities]);
+  const activities = useMemo(
+    () => combineActivities(settings.customActivities, settings.countOnlyTimers),
+    [settings.customActivities, settings.countOnlyTimers],
+  );
 
   // Applies a change that arrived from another device using the same
   // recovery code (e.g. the other parent's phone). Kept stable via
@@ -122,12 +125,21 @@ function Tracker() {
     (data: SyncedData) => {
       dayState.replaceDay(data.currentDay);
       replaceHistory(data.history);
-      updateSettings({ customActivities: data.customActivities });
+      updateSettings({ customActivities: data.customActivities, countOnlyTimers: data.countOnlyTimers });
     },
     [dayState.replaceDay, replaceHistory, updateSettings],
   );
 
-  useCloudSync(settings.recoveryCode, dayState.day, history, settings.customActivities, handleRemoteUpdate);
+  const syncStatus = useCloudSync(
+    settings.recoveryCode,
+    {
+      currentDay: dayState.day,
+      history,
+      customActivities: settings.customActivities,
+      countOnlyTimers: settings.countOnlyTimers,
+    },
+    handleRemoteUpdate,
+  );
 
   // Switches this device onto an existing session. Refuses a code with no
   // session behind it: switching anyway used to leave this device quietly
@@ -150,7 +162,7 @@ function Tracker() {
       setRestoreError(`No shared session found for ${code}. Double-check the code, or ask the other device to open the app once so it can sync.`);
       return false;
     }
-    updateSettings({ recoveryCode: code, customActivities: remote.customActivities });
+    updateSettings({ recoveryCode: code, customActivities: remote.customActivities, countOnlyTimers: remote.countOnlyTimers });
     dayState.replaceDay(remote.currentDay);
     replaceHistory(remote.history);
     setScreen(remote.currentDay ? 'main' : 'startTime');
@@ -161,6 +173,8 @@ function Tracker() {
     const activityKind = dayState.day?.logs[type].kind;
     if (activityKind === 'counter') {
       dayState.incrementCounter(type);
+    } else if (activities.find((a) => a.type === type)?.countOnly) {
+      if (dayState.day) dayState.replaceDay(logInstantSession(dayState.day, type, new Date().toISOString()));
     } else {
       dayState.toggleTimer(type);
     }
@@ -256,6 +270,7 @@ function Tracker() {
         // restore error below is actually visible where it was triggered.
         onEnterRecoveryCode={(code) => { void handleUseExistingCode(code); }}
         restoreError={restoreError}
+        syncStatus={syncStatus}
       />
     );
   }
@@ -302,7 +317,11 @@ function Tracker() {
           activities={activities}
           onTap={handleTap}
           onEditCounter={dayState.setCounterCount}
-          onEditTimer={(type: ActivityType, sessions: TimerSession[]) => dayState.setTimerSessions(type, sessions)}
+          onEditTimer={(type: ActivityType, sessions: TimerSession[], useTimer: boolean) => {
+            dayState.setTimerSessions(type, sessions);
+            const others = settings.countOnlyTimers.filter((t) => t !== type);
+            updateSettings({ countOnlyTimers: useTimer ? others : [...others, type] });
+          }}
           onEndDay={handleEndDay}
           onAddActivity={(activity: ActivityConfig) => {
             dayState.addActivity(activity);

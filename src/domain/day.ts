@@ -80,6 +80,17 @@ export function toggleTimer(day: Day, type: ActivityType, now: string): Day {
   });
 }
 
+/**
+ * A tap on a count-only timer: record one instant session, so the count is
+ * still `sessions.length` and flipping the timer back on loses nothing.
+ */
+export function logInstantSession(day: Day, type: ActivityType, now: string): Day {
+  return updateLog(day, type, (log) => {
+    if (log.kind !== 'timer') throw new Error(`${type} is not a timer activity`);
+    return { ...log, sessions: [...log.sessions, { start: now, end: now }] };
+  });
+}
+
 export function setTimerSessions(day: Day, type: ActivityType, sessions: TimerSession[]): Day {
   return updateLog(day, type, (log) => {
     if (log.kind !== 'timer') throw new Error(`${type} is not a timer activity`);

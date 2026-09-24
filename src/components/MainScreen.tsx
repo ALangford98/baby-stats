@@ -12,7 +12,7 @@ type MainScreenProps = {
   activities: ActivityConfig[];
   onTap: (type: ActivityType) => void;
   onEditCounter: (type: ActivityType, count: number) => void;
-  onEditTimer: (type: ActivityType, sessions: TimerSession[]) => void;
+  onEditTimer: (type: ActivityType, sessions: TimerSession[], useTimer: boolean) => void;
   onEndDay: () => void;
   onAddActivity: (activity: ActivityConfig) => void;
   onDeleteActivity: (type: ActivityType) => void;
@@ -79,8 +79,8 @@ export function MainScreen({
         <EditTimerModal
           config={editingConfig}
           log={editingLog as TimerLog}
-          onSave={(sessions) => {
-            onEditTimer(editingConfig.type, sessions);
+          onSave={(sessions, useTimer) => {
+            onEditTimer(editingConfig.type, sessions, useTimer);
             setEditingType(null);
           }}
           onClose={() => setEditingType(null)}

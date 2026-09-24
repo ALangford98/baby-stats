@@ -16,7 +16,8 @@ type ActivityButtonProps = {
 
 export function ActivityButton({ config, log, onTap, onEdit }: ActivityButtonProps) {
   const Icon = ICONS[config.icon];
-  const running = log.kind === 'timer' && isSessionRunning(log);
+  const countOnly = log.kind === 'timer' && config.countOnly === true;
+  const running = log.kind === 'timer' && !countOnly && isSessionRunning(log);
   const runningStart =
     log.kind === 'timer' && running ? log.sessions[log.sessions.length - 1].start : null;
   const elapsedMs = useElapsedTime(runningStart);
@@ -40,7 +41,8 @@ export function ActivityButton({ config, log, onTap, onEdit }: ActivityButtonPro
         <Icon size={28} />
         <span>{config.label}</span>
         {log.kind === 'counter' && <span className="activity-button__badge">{log.count}</span>}
-        {log.kind === 'timer' && (
+        {countOnly && <span className="activity-button__badge">{log.sessions.length}</span>}
+        {log.kind === 'timer' && !countOnly && (
           <span className="activity-button__badge">
             {formatTimerTotal(log.sessions.length, completedSessionsMs(log) + elapsedMs)}
           </span>

@@ -23,6 +23,12 @@ function labelFor(type: string, activities: ActivityConfig[]): string {
   return activities.find((a) => a.type === type)?.label ?? type;
 }
 
+// A timer the household only counts has meaningless (zero) durations, so it
+// is reported by how many times it happened, like a counter.
+function isCountOnly(type: string, activities: ActivityConfig[]): boolean {
+  return activities.find((a) => a.type === type)?.countOnly === true;
+}
+
 // A log with no matching config and nothing logged against it is a deleted
 // custom activity that was never used — showing its raw id as a zero-value
 // line would be noise, not preserved history. A deleted activity that DOES
@@ -41,6 +47,9 @@ export function buildStatsSummary(day: Day, activities: ActivityConfig[]): strin
       const label = labelFor(type, activities);
       if (log.kind === 'counter') {
         return `${label}: ${log.count}`;
+      }
+      if (isCountOnly(type, activities)) {
+        return `${label}: ${log.sessions.length}`;
       }
       const totalMs = totalTimerMs(log, now);
       return `${label}: ${log.sessions.length} session(s), ${formatDuration(totalMs)} total`;
@@ -150,6 +159,9 @@ export function generateOfflineReport(day: Day, activities: ActivityConfig[]): s
           return COUNTER_TEMPLATES[type as CounterActivityType][idx];
         }
         return genericCounterLine(label, log.count);
+      }
+      if (isCountOnly(type, activities)) {
+        return genericCounterLine(label, log.sessions.length);
       }
       const totalMinutes = totalTimerMs(log, now) / 60000;
       if (type in TIMER_TEMPLATES) {

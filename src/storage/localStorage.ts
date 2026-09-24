@@ -24,7 +24,7 @@ export function loadSettings(): Settings | null {
   if (settings === null) return null;
   // A settings object saved before customActivities existed has no such
   // field at all — default it rather than letting it stay undefined.
-  return { ...settings, customActivities: settings.customActivities ?? [] };
+  return { ...settings, customActivities: settings.customActivities ?? [], countOnlyTimers: settings.countOnlyTimers ?? [] };
 }
 
 export function saveSettings(settings: Settings): void {

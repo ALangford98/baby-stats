@@ -21,14 +21,14 @@ describe('settings round-trip', () => {
   });
 
   it('saves and reloads settings', () => {
-    const settings: Settings = { recoveryCode: 'ABCD123456', llmProvider: 'anthropic', llmApiKey: 'sk-test', customActivities: [] };
+    const settings: Settings = { recoveryCode: 'ABCD123456', llmProvider: 'anthropic', llmApiKey: 'sk-test', customActivities: [], countOnlyTimers: [] };
     saveSettings(settings);
     expect(loadSettings()).toEqual(settings);
   });
 
   it('defaults customActivities to [] when loading settings saved before this field existed', () => {
     localStorage.setItem('babystats:settings', JSON.stringify({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null }));
-    expect(loadSettings()).toEqual({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    expect(loadSettings()).toEqual({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
   });
 });
 

@@ -130,7 +130,7 @@ function Tracker() {
     [dayState.replaceDay, replaceHistory, updateSettings],
   );
 
-  const syncStatus = useCloudSync(
+  const { status: syncStatus, syncNow } = useCloudSync(
     settings.recoveryCode,
     {
       currentDay: dayState.day,
@@ -251,6 +251,7 @@ function Tracker() {
       <div>
         <AppHeader
           recoveryCode={settings.recoveryCode}
+          onSync={syncNow}
           onOpenHistory={() => setScreen('history')}
           onOpenSettings={() => setScreen('settings')}
         />
@@ -309,6 +310,7 @@ function Tracker() {
       <div>
         <AppHeader
           recoveryCode={settings.recoveryCode}
+          onSync={syncNow}
           onOpenHistory={() => setScreen('history')}
           onOpenSettings={() => setScreen('settings')}
         />
@@ -339,6 +341,7 @@ function Tracker() {
     <div>
       <AppHeader
         recoveryCode={settings.recoveryCode}
+        onSync={syncNow}
         onOpenHistory={() => setScreen('history')}
         onOpenSettings={() => setScreen('settings')}
       />

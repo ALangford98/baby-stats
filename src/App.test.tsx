@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
-import { fetchSyncedData, pushSyncedData, watchSyncedData } from './storage/firebaseSync';
+import { fetchSyncedData, watchSyncedData } from './storage/firebaseSync';
 import { createEmptyDay } from './domain/day';
 import { saveSettings } from './storage/localStorage';
 import { ACTIVITIES } from './activities';
@@ -16,6 +16,7 @@ vi.mock('./storage/firebaseSync', () => ({
   // exercises a remote update arriving, so a no-op subscription is enough.
   watchSyncedData: vi.fn().mockReturnValue(() => {}),
   isCloudSyncConfigured: vi.fn().mockReturnValue(true),
+  fetchRemoteSnapshot: vi.fn().mockResolvedValue(null),
 }));
 
 beforeEach(() => {
@@ -144,7 +145,7 @@ describe('App: multi-device sync', () => {
     // the mocked watchSyncedData captured the onChange callback App passed in.
     const onRemoteChange = vi.mocked(watchSyncedData).mock.calls[0][1];
     const remoteDay = createEmptyDay('2026-09-22T08:00:00.000Z', ACTIVITIES);
-    onRemoteChange({ currentDay: null, history: [remoteDay], customActivities: [], countOnlyTimers: [] });
+    act(() => onRemoteChange({ data: { currentDay: null, history: [remoteDay], customActivities: [], countOnlyTimers: [] }, updatedAt: Date.now() }));
 
     await userEvent.click(screen.getByRole('button', { name: /history/i }));
     expect(screen.getByText(remoteDay.date)).toBeInTheDocument();
@@ -330,9 +331,10 @@ describe('App: count-only timers', () => {
 
 describe('App: cloud sync status', () => {
   it('shows a sync failure in Settings instead of hiding it', async () => {
-    vi.mocked(pushSyncedData).mockRejectedValueOnce(Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' }));
     saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
     render(<App />);
+    const onError = vi.mocked(watchSyncedData).mock.calls.at(-1)![2]!;
+    act(() => onError(Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' })));
 
     await userEvent.click(screen.getByRole('button', { name: /settings/i }));
 

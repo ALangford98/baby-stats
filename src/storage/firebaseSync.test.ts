@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const signInAnonymouslyMock = vi.fn();
 const getDocMock = vi.fn();
+const getDocFromServerMock = vi.fn();
 const setDocMock = vi.fn();
 const onSnapshotMock = vi.fn();
 const unsubscribeMock = vi.fn();
@@ -16,11 +17,12 @@ vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({})),
   doc: (db: any, coll: any, id: any) => docMock(db, coll, id),
   getDoc: (ref: any) => getDocMock(ref),
+  getDocFromServer: (ref: any) => getDocFromServerMock(ref),
   setDoc: (ref: any, data: any) => setDocMock(ref, data),
   onSnapshot: (ref: any, callback: any, onError: any) => onSnapshotMock(ref, callback, onError),
 }));
 
-import { ensureAnonymousAuth, fetchSyncedData, pushSyncedData, watchSyncedData } from './firebaseSync';
+import { ensureAnonymousAuth, fetchRemoteSnapshot, fetchSyncedData, pushSyncedData, watchSyncedData } from './firebaseSync';
 import { resetFirebaseServicesForTest } from './firebaseClient';
 import { createEmptyDay } from '../domain/day';
 import type { ActivityConfig } from '../types';
@@ -35,6 +37,7 @@ function configureFirebase(apiKey: string | undefined) {
 beforeEach(() => {
   signInAnonymouslyMock.mockReset().mockResolvedValue(undefined);
   getDocMock.mockReset();
+  getDocFromServerMock.mockReset();
   setDocMock.mockReset().mockResolvedValue(undefined);
   onSnapshotMock.mockReset().mockReturnValue(unsubscribeMock);
   unsubscribeMock.mockReset();
@@ -132,14 +135,34 @@ describe('fetchSyncedData', () => {
   });
 });
 
+describe('fetchRemoteSnapshot', () => {
+  it('reads from the server, not the cache, and includes the version timestamp', async () => {
+    const data = { currentDay: null, history: [], customActivities: [], countOnlyTimers: [] };
+    getDocFromServerMock.mockResolvedValue({ exists: () => true, data: () => ({ ...data, updatedAt: 77 }) });
+    await expect(fetchRemoteSnapshot('REALCODE01')).resolves.toEqual({ data, updatedAt: 77 });
+    expect(getDocMock).not.toHaveBeenCalled();
+  });
+
+  it('returns null when nothing has been synced under this code yet', async () => {
+    getDocFromServerMock.mockResolvedValue({ exists: () => false });
+    await expect(fetchRemoteSnapshot('REALCODE01')).resolves.toBeNull();
+  });
+
+  it('throws rather than treating an unreadable document as empty (which would overwrite it)', async () => {
+    getDocFromServerMock.mockResolvedValue({ exists: () => true, data: () => ({ currentDay: 'nope' }) });
+    await expect(fetchRemoteSnapshot('REALCODE01')).rejects.toThrow(/unreadable/i);
+  });
+});
+
 describe('pushSyncedData', () => {
   it('writes currentDay, history, and customActivities, never any settings/API key fields', async () => {
     const day = createEmptyDay('2026-09-23T08:00:00.000Z', []);
-    await pushSyncedData('REALCODE01', { currentDay: day, history: [], customActivities: [], countOnlyTimers: [] });
+    await pushSyncedData('REALCODE01', { currentDay: day, history: [], customActivities: [], countOnlyTimers: [] }, 1234);
 
     expect(setDocMock).toHaveBeenCalledTimes(1);
     const [, payload] = setDocMock.mock.calls[0];
-    expect(Object.keys(payload).sort()).toEqual(['countOnlyTimers', 'currentDay', 'customActivities', 'history']);
+    expect(Object.keys(payload).sort()).toEqual(['countOnlyTimers', 'currentDay', 'customActivities', 'history', 'updatedAt']);
+    expect(payload.updatedAt).toBe(1234);
     expect(JSON.stringify(payload)).not.toContain('llmApiKey');
   });
 });
@@ -152,9 +175,9 @@ describe('watchSyncedData', () => {
     expect(onSnapshotMock).toHaveBeenCalledTimes(1);
     const [, callback] = onSnapshotMock.mock.calls[0];
     const data = { currentDay: null, history: [], customActivities: [], countOnlyTimers: [] };
-    callback({ metadata: { hasPendingWrites: false }, exists: () => true, data: () => data });
+    callback({ metadata: { hasPendingWrites: false, fromCache: false }, exists: () => true, data: () => ({ ...data, updatedAt: 42 }) });
 
-    expect(onChange).toHaveBeenCalledWith(data);
+    expect(onChange).toHaveBeenCalledWith({ data, updatedAt: 42 });
     unsubscribe();
     expect(unsubscribeMock).toHaveBeenCalledTimes(1);
   });
@@ -182,6 +205,37 @@ describe('watchSyncedData', () => {
     errorCallback(error);
 
     expect(onError).toHaveBeenCalledWith(error);
+  });
+
+  it('treats a document written before timestamps existed as the oldest possible version', () => {
+    const onChange = vi.fn();
+    watchSyncedData('REALCODE01', onChange);
+
+    const [, callback] = onSnapshotMock.mock.calls[0];
+    const data = { currentDay: null, history: [], customActivities: [], countOnlyTimers: [] };
+    callback({ metadata: { hasPendingWrites: false, fromCache: false }, exists: () => true, data: () => data });
+
+    expect(onChange).toHaveBeenCalledWith({ data, updatedAt: 0 });
+  });
+
+  it('reports a confirmed-missing document as null so the first device can seed it', () => {
+    const onChange = vi.fn();
+    watchSyncedData('REALCODE01', onChange);
+
+    const [, callback] = onSnapshotMock.mock.calls[0];
+    callback({ metadata: { hasPendingWrites: false, fromCache: false }, exists: () => false });
+
+    expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it('ignores cache-only snapshots, which are not the server\'s real state', () => {
+    const onChange = vi.fn();
+    watchSyncedData('REALCODE01', onChange);
+
+    const [, callback] = onSnapshotMock.mock.calls[0];
+    callback({ metadata: { hasPendingWrites: false, fromCache: true }, exists: () => false });
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('ignores a malformed remote snapshot instead of forwarding it', () => {
@@ -217,7 +271,7 @@ describe('when Firebase is not configured (no .env, the shipped default)', () =>
 
   it('pushSyncedData is a silent no-op', async () => {
     const day = createEmptyDay('2026-09-23T08:00:00.000Z', []);
-    await expect(pushSyncedData('REALCODE01', { currentDay: day, history: [], customActivities: [], countOnlyTimers: [] })).resolves.toBeUndefined();
+    await expect(pushSyncedData('REALCODE01', { currentDay: day, history: [], customActivities: [], countOnlyTimers: [] }, 1)).resolves.toBeUndefined();
     expect(setDocMock).not.toHaveBeenCalled();
   });
 

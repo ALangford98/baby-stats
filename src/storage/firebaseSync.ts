@@ -1,5 +1,5 @@
 import { signInAnonymously } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirebaseServices } from './firebaseClient';
 import type { ActivityConfig, ActivityType, Day } from '../types';
 
@@ -69,7 +69,33 @@ export async function fetchSyncedData(recoveryCode: string): Promise<SyncedData 
   return parseSyncedData(snapshot.data());
 }
 
-export async function pushSyncedData(recoveryCode: string, data: SyncedData): Promise<void> {
+/** What the server holds, plus when (ms since epoch) that version was last edited. */
+export type RemoteSnapshot = { data: SyncedData; updatedAt: number };
+
+function toRemoteSnapshot(raw: unknown): RemoteSnapshot | null {
+  const parsed = parseSyncedData(raw);
+  if (!parsed) return null;
+  const updatedAt = (raw as { updatedAt?: unknown }).updatedAt;
+  // Documents written before timestamps existed count as oldest-possible.
+  return { data: parsed, updatedAt: typeof updatedAt === 'number' ? updatedAt : 0 };
+}
+
+/**
+ * Reads the shared document straight from the server (never the local
+ * cache), for a manual "sync now". `null` means no document exists yet.
+ */
+export async function fetchRemoteSnapshot(recoveryCode: string): Promise<RemoteSnapshot | null> {
+  const services = getFirebaseServices();
+  if (!services) throw new Error('Cloud sync is not configured');
+  await ensureAnonymousAuth();
+  const snapshot = await getDocFromServer(doc(services.db, 'users', recoveryCode));
+  if (!snapshot.exists()) return null;
+  const remote = toRemoteSnapshot(snapshot.data());
+  if (!remote) throw new Error('The shared data on the server is unreadable');
+  return remote;
+}
+
+export async function pushSyncedData(recoveryCode: string, data: SyncedData, updatedAt: number): Promise<void> {
   const services = getFirebaseServices();
   if (!services) return; // Cloud sync not configured — nothing to push to.
   await setDoc(doc(services.db, 'users', recoveryCode), {
@@ -77,6 +103,7 @@ export async function pushSyncedData(recoveryCode: string, data: SyncedData): Pr
     history: data.history,
     customActivities: data.customActivities,
     countOnlyTimers: data.countOnlyTimers,
+    updatedAt,
   });
 }
 
@@ -85,12 +112,15 @@ export async function pushSyncedData(recoveryCode: string, data: SyncedData): Pr
  * another device (a second parent's phone) shows up here automatically.
  * `hasPendingWrites` snapshots are our own optimistic write echoing back —
  * skipping those is what stops us from re-applying our own change to
- * ourselves. Returns an unsubscribe function; a no-op one when cloud sync
- * isn't configured, so callers never need a null check.
+ * ourselves. `fromCache` snapshots are skipped too: they are only this
+ * client's guess (an offline "document doesn't exist" would otherwise read as
+ * "the server is empty, overwrite it"). A confirmed-missing document is
+ * reported as `null`. Returns an unsubscribe function; a no-op one when cloud
+ * sync isn't configured, so callers never need a null check.
  */
 export function watchSyncedData(
   recoveryCode: string,
-  onChange: (data: SyncedData) => void,
+  onChange: (remote: RemoteSnapshot | null) => void,
   onError: (error: unknown) => void = () => {},
 ): () => void {
   const services = getFirebaseServices();
@@ -98,10 +128,13 @@ export function watchSyncedData(
   return onSnapshot(
     doc(services.db, 'users', recoveryCode),
     (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
-      if (!snapshot.exists()) return;
-      const parsed = parseSyncedData(snapshot.data());
-      if (parsed) onChange(parsed);
+      if (snapshot.metadata.hasPendingWrites || snapshot.metadata.fromCache) return;
+      if (!snapshot.exists()) {
+        onChange(null);
+        return;
+      }
+      const remote = toRemoteSnapshot(snapshot.data());
+      if (remote) onChange(remote);
     },
     onError,
   );

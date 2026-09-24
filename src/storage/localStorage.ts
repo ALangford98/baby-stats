@@ -4,6 +4,7 @@ const KEYS = {
   settings: 'babystats:settings',
   currentDay: 'babystats:currentDay',
   history: 'babystats:history',
+  syncMeta: 'babystats:syncMeta',
 } as const;
 
 // Every load runs inside a `useState` lazy initializer, so a parse error would
@@ -50,4 +51,22 @@ export function loadHistory(): Day[] {
 
 export function saveHistory(history: Day[]): void {
   localStorage.setItem(KEYS.history, JSON.stringify(history ?? []));
+}
+
+/**
+ * Whether this device holds edits the server hasn't confirmed yet, and when
+ * the local data was last edited. It is what lets a device that was closed
+ * (or offline) tell "my copy is stale, take the server's" apart from "I have
+ * newer edits the server never got" when it reconnects.
+ */
+export type SyncMeta = { recoveryCode: string; dirty: boolean; updatedAt: number };
+
+export function loadSyncMeta(recoveryCode: string): SyncMeta {
+  const meta = parseOr<Partial<SyncMeta> | null>(localStorage.getItem(KEYS.syncMeta), null);
+  if (!meta || meta.recoveryCode !== recoveryCode) return { recoveryCode, dirty: false, updatedAt: 0 };
+  return { recoveryCode, dirty: meta.dirty === true, updatedAt: typeof meta.updatedAt === 'number' ? meta.updatedAt : 0 };
+}
+
+export function saveSyncMeta(meta: SyncMeta): void {
+  localStorage.setItem(KEYS.syncMeta, JSON.stringify(meta));
 }

@@ -67,6 +67,14 @@ describe('fetchSyncedData', () => {
     expect(result).toEqual(data);
   });
 
+  it('finishes anonymous sign-in before reading, since the rules require an authenticated client', async () => {
+    const order: string[] = [];
+    signInAnonymouslyMock.mockImplementation(async () => { order.push('signIn'); });
+    getDocMock.mockImplementation(async () => { order.push('getDoc'); return { exists: () => false }; });
+    await fetchSyncedData('REALCODE01');
+    expect(order).toEqual(['signIn', 'getDoc']);
+  });
+
   it('propagates errors (e.g. offline/network failure) rather than swallowing them', async () => {
     getDocMock.mockRejectedValue(new Error('network error'));
     await expect(fetchSyncedData('REALCODE01')).rejects.toThrow('network error');

@@ -30,7 +30,7 @@ export function RecoveryCodeStep({ recoveryCode, onContinueFresh, onUseExistingC
     <Dialog label="Get started">
       <p>Your recovery code:</p>
       <strong>{recoveryCode}</strong>
-      <p>Save this to restore your data on another device. Don't share it — anyone with this code can access your data.</p>
+      <p>Save this to restore your data on another device. To track together with someone, use the share button at the top — anyone with your code or link can see and edit your data.</p>
       <button type="button" onClick={onContinueFresh}>
         Continue
       </button>

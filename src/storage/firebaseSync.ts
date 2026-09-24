@@ -39,6 +39,10 @@ export async function ensureAnonymousAuth(): Promise<void> {
 export async function fetchSyncedData(recoveryCode: string): Promise<SyncedData | null> {
   const services = getFirebaseServices();
   if (!services) throw new Error('Cloud sync is not configured');
+  // The rules only admit signed-in clients. Joining can happen moments after
+  // launch (straight from a share link), before the sign-in kicked off by
+  // useCloudSync has finished — so wait for it rather than race it.
+  await ensureAnonymousAuth();
   const snapshot = await getDoc(doc(services.db, 'users', recoveryCode));
   if (!snapshot.exists()) return null;
   const data: unknown = snapshot.data();

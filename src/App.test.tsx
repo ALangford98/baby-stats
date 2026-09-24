@@ -20,6 +20,7 @@ vi.mock('./storage/firebaseSync', () => ({
 beforeEach(() => {
   localStorage.clear();
   vi.mocked(fetchSyncedData).mockReset().mockResolvedValue(null);
+  window.history.replaceState(null, '', '/');
 });
 
 function persistedCurrentDay(): Day | null {
@@ -164,6 +165,107 @@ describe('App: recovery-code restore from Settings', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not reach that recovery code/i);
     // Still on Settings — the error is where the user triggered it.
     expect(screen.getByLabelText(/enter a different recovery code/i)).toBeInTheDocument();
+  });
+});
+
+describe('App: joining a partner\'s session by code', () => {
+  it('normalizes a lowercase, spaced code before looking it up', async () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: null, history: [], customActivities: [] });
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /settings/i }));
+    await userEvent.type(screen.getByLabelText(/enter a different recovery code/i), ' zzzz-999999 ');
+    await userEvent.click(screen.getByRole('button', { name: /switch code/i }));
+
+    expect(fetchSyncedData).toHaveBeenCalledWith('ZZZZ999999');
+  });
+
+  it('refuses to switch to a code that has no session behind it', async () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    render(<App />); // fetchSyncedData resolves null: no such session
+
+    await userEvent.click(screen.getByRole('button', { name: /settings/i }));
+    await userEvent.type(screen.getByLabelText(/enter a different recovery code/i), 'ZZZZ999999');
+    await userEvent.click(screen.getByRole('button', { name: /switch code/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no shared session found/i);
+    expect(JSON.parse(localStorage.getItem('babystats:settings')!).recoveryCode).toBe('ABCD123456');
+  });
+
+  it('explains a permission-denied failure instead of blaming the connection', async () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    vi.mocked(fetchSyncedData).mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' }));
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /settings/i }));
+    await userEvent.type(screen.getByLabelText(/enter a different recovery code/i), 'ZZZZ999999');
+    await userEvent.click(screen.getByRole('button', { name: /switch code/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/refused access/i);
+  });
+});
+
+describe('App: share links', () => {
+  it('asks before joining the session in a share link, then switches to it', async () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    const remoteDay = createEmptyDay('2026-09-22T08:00:00.000Z', ACTIVITIES);
+    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: remoteDay, history: [], customActivities: [] });
+    window.history.replaceState(null, '', '/?join=PARTNER234');
+    render(<App />);
+
+    expect(screen.getByRole('dialog', { name: /join shared session/i })).toBeInTheDocument();
+    expect(fetchSyncedData).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: /^join$/i }));
+
+    expect(await screen.findByRole('button', { name: /^light diaper$/i })).toBeInTheDocument();
+    expect(fetchSyncedData).toHaveBeenCalledWith('PARTNER234');
+    expect(JSON.parse(localStorage.getItem('babystats:settings')!).recoveryCode).toBe('PARTNER234');
+    expect(window.location.search).toBe('');
+  });
+
+  it('leaves this device\'s session alone when the invite is declined', async () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    window.history.replaceState(null, '', '/?join=PARTNER234');
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /not now/i }));
+
+    expect(screen.getByLabelText(/start time/i)).toBeInTheDocument();
+    expect(fetchSyncedData).not.toHaveBeenCalled();
+    expect(window.location.search).toBe('');
+  });
+
+  it('shows the confirmation after consent for a brand-new device, skipping recovery-code onboarding on join', async () => {
+    vi.mocked(fetchSyncedData).mockResolvedValue({ currentDay: null, history: [], customActivities: [] });
+    window.history.replaceState(null, '', '/?join=PARTNER234');
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /ok|yes|agree/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^join$/i }));
+
+    expect(await screen.findByLabelText(/start time/i)).toBeInTheDocument();
+    expect(screen.queryByText(/save this to restore your data/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps the confirmation open with an error when the linked session does not exist', async () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    window.history.replaceState(null, '', '/?join=PARTNER234');
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /^join$/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no shared session found/i);
+    expect(screen.getByRole('dialog', { name: /join shared session/i })).toBeInTheDocument();
+  });
+
+  it('ignores a link to the session this device is already in', () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    window.history.replaceState(null, '', '/?join=ABCD123456');
+    render(<App />);
+
+    expect(screen.queryByRole('dialog', { name: /join shared session/i })).not.toBeInTheDocument();
   });
 });
 

@@ -21,15 +21,13 @@
   cursor: pointer;
 }
 
-.app-header__code-group {
+.app-header__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
-.app-header__code {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
+.app-header__status {
   font-size: 0.85rem;
   color: #555;
 }

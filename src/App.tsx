@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ActivityConfig, ActivityType, Day, TimerSession } from './types';
 import { combineActivities } from './activities';
 import { AppHeader } from './components/AppHeader';
@@ -9,6 +9,7 @@ import { MainScreen } from './components/MainScreen';
 import { ReportScreen } from './components/ReportScreen';
 import { HistoryScreen } from './components/HistoryScreen';
 import { HistoryDetail } from './components/HistoryDetail';
+import { JoinSessionDialog } from './components/JoinSessionDialog';
 import { SettingsScreen } from './components/SettingsScreen';
 import { useDayState } from './hooks/useDayState';
 import { useSettings } from './hooks/useSettings';
@@ -18,6 +19,7 @@ import { generateOfflineReport } from './domain/reportText';
 import { generateAiReport } from './domain/aiReport';
 import { fetchSyncedData, type SyncedData } from './storage/firebaseSync';
 import { loadSettings } from './storage/localStorage';
+import { clearJoinCodeFromUrl, normalizeRecoveryCode, readJoinCode } from './utils/recoveryCode';
 
 type Screen =
   | 'recoveryCode'
@@ -33,6 +35,20 @@ type Screen =
 // mount). Splitting the tracking UI into its own component means those
 // hooks are not invoked at all until the user accepts — so declining
 // consent leaves localStorage untouched.
+// Turns a failed join into something the person can act on. Sync errors are
+// otherwise swallowed (sync is best-effort), so this is the one place a
+// misconfigured backend becomes visible.
+function describeJoinError(err: unknown): string {
+  if (err instanceof Error && err.message === 'Cloud sync is not configured') {
+    return "Cloud sync isn't set up in this version of the app, so sessions can't be shared.";
+  }
+  const code = (err as { code?: unknown } | null)?.code;
+  if (code === 'permission-denied' || code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+    return 'The sync server refused access. Anonymous sign-in may be disabled in Firebase, or the Firestore rules may not be deployed.';
+  }
+  return 'Could not reach that recovery code right now. Check the code and your connection, or continue fresh.';
+}
+
 export function App() {
   // Someone with saved settings already answered this question on a previous
   // launch. Re-asking every time would be noise, and worse: declining would
@@ -73,6 +89,17 @@ function Tracker() {
   const { settings, updateSettings } = useSettings();
   const { history, addToHistory, replaceHistory, removeFromHistory } = useHistory();
 
+  // A share link (`?join=CODE`) asks to join someone else's session. Opening
+  // your own link is a no-op, so only a different code is worth confirming.
+  const [pendingJoin, setPendingJoin] = useState<string | null>(() => {
+    const code = readJoinCode(window.location.search);
+    return code && code !== settings.recoveryCode ? code : null;
+  });
+
+  useEffect(() => {
+    if (!pendingJoin) clearJoinCodeFromUrl();
+  }, [pendingJoin]);
+
   const activities = useMemo(() => combineActivities(settings.customActivities), [settings.customActivities]);
 
   // Applies a change that arrived from another device using the same
@@ -90,19 +117,32 @@ function Tracker() {
 
   useCloudSync(settings.recoveryCode, dayState.day, history, settings.customActivities, handleRemoteUpdate);
 
-  async function handleUseExistingCode(code: string) {
+  // Switches this device onto an existing session. Refuses a code with no
+  // session behind it: switching anyway used to leave this device quietly
+  // tracking into a brand-new empty session that nobody else could see.
+  async function handleUseExistingCode(rawCode: string): Promise<boolean> {
     setRestoreError(null);
-    try {
-      const remote = await fetchSyncedData(code);
-      updateSettings(remote ? { recoveryCode: code, customActivities: remote.customActivities } : { recoveryCode: code });
-      if (remote) {
-        dayState.replaceDay(remote.currentDay);
-        replaceHistory(remote.history);
-      }
-      setScreen(dayState.day || remote?.currentDay ? 'main' : 'startTime');
-    } catch {
-      setRestoreError('Could not reach that recovery code right now. Check the code and your connection, or continue fresh.');
+    const code = normalizeRecoveryCode(rawCode);
+    if (!code) {
+      setRestoreError('Enter a code first.');
+      return false;
     }
+    let remote: SyncedData | null;
+    try {
+      remote = await fetchSyncedData(code);
+    } catch (err) {
+      setRestoreError(describeJoinError(err));
+      return false;
+    }
+    if (!remote) {
+      setRestoreError(`No shared session found for ${code}. Double-check the code, or ask the other device to open the app once so it can sync.`);
+      return false;
+    }
+    updateSettings({ recoveryCode: code, customActivities: remote.customActivities });
+    dayState.replaceDay(remote.currentDay);
+    replaceHistory(remote.history);
+    setScreen(remote.currentDay ? 'main' : 'startTime');
+    return true;
   }
 
   function handleTap(type: ActivityType) {
@@ -149,6 +189,22 @@ function Tracker() {
   // whichever of those two screens is actually current.
   function backToTracker() {
     setScreen(dayState.day ? 'main' : 'startTime');
+  }
+
+  if (pendingJoin) {
+    return (
+      <JoinSessionDialog
+        code={pendingJoin}
+        error={restoreError}
+        onJoin={async () => {
+          if (await handleUseExistingCode(pendingJoin)) setPendingJoin(null);
+        }}
+        onCancel={() => {
+          setRestoreError(null);
+          setPendingJoin(null);
+        }}
+      />
+    );
   }
 
   if (screen === 'recoveryCode') {

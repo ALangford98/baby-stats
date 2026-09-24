@@ -3,24 +3,26 @@ import { ACTIVITIES, combineActivities, ICON_OPTIONS } from './activities';
 import type { ActivityConfig, ActivityType } from './types';
 
 describe('ACTIVITIES', () => {
-  it('covers exactly the seven expected activity types, each once', () => {
+  it('covers exactly the eight expected activity types, each once, in display order', () => {
     const expected: ActivityType[] = [
       'lightDiaper',
       'mediumDiaper',
       'heavyDiaper',
+      'feeding',
       'spitUp',
       'nap',
       'tummyTime',
       'cryingFit',
     ];
-    expect(ACTIVITIES.map((a) => a.type).sort()).toEqual([...expected].sort());
+    expect(ACTIVITIES.map((a) => a.type)).toEqual(expected);
   });
 
-  it('marks diapers and spit up as counters, and nap/tummyTime/cryingFit as timers', () => {
+  it('marks diapers, feeding and spit up as counters, and nap/tummyTime/cryingFit as timers', () => {
     const kindOf = (t: ActivityType) => ACTIVITIES.find((a) => a.type === t)?.kind;
     expect(kindOf('lightDiaper')).toBe('counter');
     expect(kindOf('mediumDiaper')).toBe('counter');
     expect(kindOf('heavyDiaper')).toBe('counter');
+    expect(kindOf('feeding')).toBe('counter');
     expect(kindOf('spitUp')).toBe('counter');
     expect(kindOf('nap')).toBe('timer');
     expect(kindOf('tummyTime')).toBe('timer');

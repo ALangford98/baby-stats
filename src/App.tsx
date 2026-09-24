@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ActivityConfig, ActivityType, Day, TimerSession } from './types';
-import { combineActivities } from './activities';
+import { ACTIVITIES, combineActivities } from './activities';
+import { addActivityToDay } from './domain/day';
 import { AppHeader } from './components/AppHeader';
 import { ConsentModal } from './components/ConsentModal';
 import { RecoveryCodeStep } from './components/RecoveryCodeStep';
@@ -99,6 +100,17 @@ function Tracker() {
   useEffect(() => {
     if (!pendingJoin) clearJoinCodeFromUrl();
   }, [pendingJoin]);
+
+  // A day started before a built-in activity existed has no log for it, so
+  // its button would stay hidden until tomorrow. Backfill it into the running
+  // day instead; a no-op once every built-in has a log.
+  useEffect(() => {
+    const day = dayState.day;
+    if (!day || day.endedAt) return;
+    const missing = ACTIVITIES.filter((activity) => !day.logs[activity.type]);
+    if (missing.length === 0) return;
+    dayState.replaceDay(missing.reduce((next, activity) => addActivityToDay(next, activity), day));
+  }, [dayState.day, dayState.replaceDay]);
 
   const activities = useMemo(() => combineActivities(settings.customActivities), [settings.customActivities]);
 

@@ -291,6 +291,19 @@ describe('App: recovery-code restore applies the remote device\'s custom activit
   });
 });
 
+describe('App: built-in activities added after a day started', () => {
+  it('backfills a missing built-in (Feeding) into the running day so its button appears right away', () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [] });
+    const oldDay = createEmptyDay('2026-09-24T08:00:00.000Z', ACTIVITIES.filter((a) => a.type !== 'feeding'));
+    localStorage.setItem('babystats:currentDay', JSON.stringify(oldDay));
+
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: /^feeding$/i })).toBeInTheDocument();
+    expect(persistedCurrentDay()!.logs.feeding).toEqual({ kind: 'counter', type: 'feeding', count: 0 });
+  });
+});
+
 describe('App: custom activities', () => {
   it('adding a custom counter makes it tappable immediately and appear in the end-of-day report', async () => {
     render(<App />);

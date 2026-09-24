@@ -60,7 +60,7 @@ function bucketIndex(value: number, thresholds: number[]): number {
   return idx;
 }
 
-type CounterActivityType = 'lightDiaper' | 'mediumDiaper' | 'heavyDiaper' | 'spitUp';
+type CounterActivityType = 'lightDiaper' | 'mediumDiaper' | 'heavyDiaper' | 'feeding' | 'spitUp';
 type TimerActivityType = 'nap' | 'tummyTime' | 'cryingFit';
 
 const COUNTER_TEMPLATES: Record<CounterActivityType, string[]> = {
@@ -81,6 +81,12 @@ const COUNTER_TEMPLATES: Record<CounterActivityType, string[]> = {
     'A couple of heavy diapers snuck in there.',
     'Several heavy diapers\n- bring out the good wipes.',
     '6+ heavy diapers\n- someone should get hazard pay.',
+  ],
+  feeding: [
+    'No feedings logged today\n- someone forgot to press the button.',
+    'A couple of feedings\n- a light snacker today.',
+    'Several feedings today\n- a healthy appetite.',
+    '6+ feedings\n- the all-you-can-eat buffet never closed.',
   ],
   spitUp: [
     'No spit up today\n- the shirt survives another day.',

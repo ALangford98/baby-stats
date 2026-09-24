@@ -9,6 +9,12 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
+/** Running total for a timer tile: session count, then total time — `3X - 01H:25M`. */
+export function formatTimerTotal(sessionCount: number, totalMs: number): string {
+  const totalMinutes = Math.max(0, Math.floor(totalMs / 60_000));
+  return `${sessionCount}X - ${pad(Math.floor(totalMinutes / 60))}H:${pad(totalMinutes % 60)}M`;
+}
+
 // `<input type="datetime-local">` speaks local wall-clock time, while every
 // timestamp we store is an ISO (UTC) string. Slicing the ISO string shows the
 // UTC wall-clock but `new Date(value)` parses it back as local, so displaying

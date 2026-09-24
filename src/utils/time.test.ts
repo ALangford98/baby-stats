@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatElapsed, fromLocalInputValue, toLocalDateString, toLocalInputValue } from './time';
+import { formatElapsed, formatTimerTotal, fromLocalInputValue, toLocalDateString, toLocalInputValue } from './time';
 
 describe('formatElapsed', () => {
   it('formats sub-minute durations as 0:ss', () => {
@@ -12,6 +12,20 @@ describe('formatElapsed', () => {
 
   it('pads seconds under 10', () => {
     expect(formatElapsed(3 * 60_000 + 2000)).toBe('3:02');
+  });
+});
+
+describe('formatTimerTotal', () => {
+  it('formats count, padded hours and padded minutes', () => {
+    expect(formatTimerTotal(3, (60 + 25) * 60_000 + 59_000)).toBe('3X - 01H:25M');
+  });
+
+  it('shows zeros before any session has been recorded', () => {
+    expect(formatTimerTotal(0, 0)).toBe('0X - 00H:00M');
+  });
+
+  it('keeps counting hours past 99 rather than wrapping', () => {
+    expect(formatTimerTotal(1, 100 * 3_600_000)).toBe('1X - 100H:00M');
   });
 });
 

@@ -54,6 +54,14 @@ export function isSessionRunning(log: TimerLog): boolean {
   return last !== undefined && last.end === null;
 }
 
+/** Total time of every finished session; a running one is left to the caller to tick. */
+export function completedSessionsMs(log: TimerLog): number {
+  return log.sessions.reduce(
+    (sum, session) => (session.end === null ? sum : sum + Math.max(0, Date.parse(session.end) - Date.parse(session.start))),
+    0,
+  );
+}
+
 export function isTimerRunning(day: Day, type: ActivityType): boolean {
   const log = day.logs[type];
   return log.kind === 'timer' && isSessionRunning(log);

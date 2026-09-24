@@ -28,6 +28,35 @@ describe('ActivityButton', () => {
     expect(screen.getByRole('button', { name: /^nap$/i })).toHaveClass('activity-button__main--active');
   });
 
+  it('shows the timer\'s running total (sessions and time) under the label', () => {
+    const log: TimerLog = {
+      kind: 'timer',
+      type: 'nap',
+      sessions: [
+        { start: '2026-09-23T08:00:00.000Z', end: '2026-09-23T09:00:00.000Z' },
+        { start: '2026-09-23T12:00:00.000Z', end: '2026-09-23T12:25:00.000Z' },
+      ],
+    };
+    render(<ActivityButton config={napConfig} log={log} onTap={vi.fn()} onEdit={vi.fn()} />);
+
+    expect(screen.getByText('2X - 01H:25M')).toBeInTheDocument();
+  });
+
+  it('includes the running session in the total', () => {
+    const start = new Date(Date.now() - 30 * 60_000).toISOString();
+    const log: TimerLog = {
+      kind: 'timer',
+      type: 'nap',
+      sessions: [
+        { start: '2026-09-23T08:00:00.000Z', end: '2026-09-23T09:00:00.000Z' },
+        { start, end: null },
+      ],
+    };
+    render(<ActivityButton config={napConfig} log={log} onTap={vi.fn()} onEdit={vi.fn()} />);
+
+    expect(screen.getByText('2X - 01H:30M')).toBeInTheDocument();
+  });
+
   it('calls onEdit when the edit icon is tapped, without triggering onTap', async () => {
     const log: CounterLog = { kind: 'counter', type: 'lightDiaper', count: 0 };
     const onTap = vi.fn();

@@ -1,9 +1,9 @@
 import { Pencil } from 'lucide-react';
 import type { ActivityConfig } from '../activities';
 import type { ActivityLog } from '../types';
-import { isSessionRunning } from '../domain/day';
+import { completedSessionsMs, isSessionRunning } from '../domain/day';
 import { useElapsedTime } from '../hooks/useElapsedTime';
-import { formatElapsed } from '../utils/time';
+import { formatElapsed, formatTimerTotal } from '../utils/time';
 import { ICONS } from './icons';
 import './ActivityButton.css';
 
@@ -40,6 +40,11 @@ export function ActivityButton({ config, log, onTap, onEdit }: ActivityButtonPro
         <Icon size={28} />
         <span>{config.label}</span>
         {log.kind === 'counter' && <span className="activity-button__badge">{log.count}</span>}
+        {log.kind === 'timer' && (
+          <span className="activity-button__badge">
+            {formatTimerTotal(log.sessions.length, completedSessionsMs(log) + elapsedMs)}
+          </span>
+        )}
         {log.kind === 'timer' && running && (
           <span className="activity-button__elapsed">{formatElapsed(elapsedMs)}</span>
         )}

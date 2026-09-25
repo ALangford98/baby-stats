@@ -3,6 +3,7 @@ import type { ActivityConfig, Day } from '../types';
 import { defaultBedtime, nightEntryTimes, nightSessionCount, validateBedtime, type NightTargets } from '../domain/night';
 import { formatClockTime, fromLocalInputValue, toLocalInputValue } from '../utils/time';
 import { Dialog } from './Dialog';
+import './NightCheckInDialog.css';
 
 type NightCheckInDialogProps = {
   day: Day;
@@ -60,15 +61,19 @@ export function NightCheckInDialog({ day, activities, now, onConfirm, onCancel }
           if (!log) return null;
           if (log.kind === 'timer') {
             const sessions = error ? 0 : nightSessionCount(log, bedAt, now);
-            return <li key={a.type}>{a.label}: {sessions} sessions overnight</li>;
+            return <li key={a.type} className="night-check-in__timer">{a.label}: {sessions} sessions overnight</li>;
           }
           const times = error ? [] : nightEntryTimes(log, bedAt, now);
           return (
             <li key={a.type} className="night-check-in__row">
-              <span>{a.label}</span>
-              <span>{times.length === 0 ? 'nothing logged' : `you logged ${times.length} (${times.map(formatClockTime).join(', ')})`}</span>
+              <div className="night-check-in__what">
+                <strong>{a.label}</strong>
+                <span className="night-check-in__note">
+                  {times.length === 0 ? 'nothing logged' : `you logged ${times.length} (${times.map(formatClockTime).join(', ')})`}
+                </span>
+              </div>
               <button type="button" aria-label={`Fewer ${a.label}`} onClick={() => adjust(a.type, -1)}>−</button>
-              <span data-testid={`night-count-${a.type}`}>{targets[a.type] ?? 0}</span>
+              <span className="night-check-in__count" data-testid={`night-count-${a.type}`}>{targets[a.type] ?? 0}</span>
               <button type="button" aria-label={`More ${a.label}`} onClick={() => adjust(a.type, 1)}>+</button>
             </li>
           );

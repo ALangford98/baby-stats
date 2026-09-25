@@ -36,3 +36,17 @@ export function toLocalDateString(iso: string): string {
   const d = new Date(iso);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+/** "2:05 PM" style local clock time. */
+export function formatClockTime(at: string | number): string {
+  return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+/** "45m", "2h", "3h 10m". */
+export function formatDurationShort(ms: number): string {
+  const totalMinutes = Math.max(0, Math.round(ms / 60_000));
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}

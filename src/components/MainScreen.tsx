@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ActivityConfig, ActivityType, CounterLog, Day, TimerLog, TimerSession } from '../types';
+import type { ActivityConfig, ActivityType, CounterEntry, CounterLog, Day, TimerLog, TimerSession } from '../types';
 import { AddActivityButton } from './AddActivityButton';
 import { AddActivityDialog } from './AddActivityDialog';
 import { ActivityButton } from './ActivityButton';
@@ -11,7 +11,7 @@ type MainScreenProps = {
   day: Day;
   activities: ActivityConfig[];
   onTap: (type: ActivityType) => void;
-  onEditCounter: (type: ActivityType, count: number) => void;
+  onEditCounter: (type: ActivityType, entries: CounterEntry[]) => void;
   onEditTimer: (type: ActivityType, sessions: TimerSession[], useTimer: boolean) => void;
   onEndDay: () => void;
   onAddActivity: (activity: ActivityConfig) => void;
@@ -60,8 +60,8 @@ export function MainScreen({
         <EditCounterModal
           config={editingConfig}
           log={editingLog as CounterLog}
-          onSave={(count) => {
-            onEditCounter(editingConfig.type, count);
+          onSave={(entries) => {
+            onEditCounter(editingConfig.type, entries);
             setEditingType(null);
           }}
           onClose={() => setEditingType(null)}

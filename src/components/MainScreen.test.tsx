@@ -66,7 +66,7 @@ describe('MainScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: /edit spit up/i }));
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(onEditCounter).toHaveBeenCalledWith('spitUp', 1);
+    expect(onEditCounter).toHaveBeenCalledWith('spitUp', [{ kind: 'exact', at: expect.any(String) }]);
   });
 
   it('calls onEndDay when the End Day button is tapped', async () => {

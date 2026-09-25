@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatElapsed, formatTimerTotal, fromLocalInputValue, toLocalDateString, toLocalInputValue } from './time';
+import { formatClockTime, formatDurationShort, formatElapsed, formatTimerTotal, fromLocalInputValue, toLocalDateString, toLocalInputValue } from './time';
 
 describe('formatElapsed', () => {
   it('formats sub-minute durations as 0:ss', () => {
@@ -70,5 +70,20 @@ describe('toLocalDateString', () => {
       expect(toLocalDateString(iso)).toBe('2026-09-23');
     }
     expect(toLocalDateString(iso)).toHaveLength(10);
+  });
+});
+
+describe('formatDurationShort', () => {
+  it('uses minutes under an hour and h+m above', () => {
+    expect(formatDurationShort(45 * 60_000)).toBe('45m');
+    expect(formatDurationShort((3 * 60 + 10) * 60_000)).toBe('3h 10m');
+    expect(formatDurationShort(2 * 3_600_000)).toBe('2h');
+  });
+});
+
+describe('formatClockTime', () => {
+  it('formats a local clock time with minutes', () => {
+    const at = new Date(2026, 8, 24, 14, 5).getTime();
+    expect(formatClockTime(at)).toBe(new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
   });
 });

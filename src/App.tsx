@@ -318,7 +318,7 @@ function Tracker() {
           day={dayState.day}
           activities={activities}
           onTap={handleTap}
-          onEditCounter={dayState.setCounterCount}
+          onEditCounter={dayState.setCounterEntries}
           onEditTimer={(type: ActivityType, sessions: TimerSession[], useTimer: boolean) => {
             dayState.setTimerSessions(type, sessions);
             const others = settings.countOnlyTimers.filter((t) => t !== type);

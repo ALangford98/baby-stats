@@ -12,7 +12,7 @@ const napConfig = ACTIVITIES.find((a) => a.type === 'nap')!;
 
 describe('ActivityButton', () => {
   it('shows the count badge for a counter activity and calls onTap when tapped', async () => {
-    const log: CounterLog = { kind: 'counter', type: 'lightDiaper', count: 3 };
+    const log: CounterLog = { kind: 'counter', type: 'lightDiaper', count: 3, entries: Array(3).fill({ kind: 'untimed' }) };
     const onTap = vi.fn();
     render(<ActivityButton config={diaperConfig} log={log} onTap={onTap} onEdit={vi.fn()} />);
 
@@ -68,7 +68,7 @@ describe('ActivityButton', () => {
   });
 
   it('calls onEdit when the edit icon is tapped, without triggering onTap', async () => {
-    const log: CounterLog = { kind: 'counter', type: 'lightDiaper', count: 0 };
+    const log: CounterLog = { kind: 'counter', type: 'lightDiaper', count: 0, entries: [] };
     const onTap = vi.fn();
     const onEdit = vi.fn();
     render(<ActivityButton config={diaperConfig} log={log} onTap={onTap} onEdit={onEdit} />);

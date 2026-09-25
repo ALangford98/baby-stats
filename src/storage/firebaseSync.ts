@@ -2,6 +2,7 @@ import { signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, getDocFromServer, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirebaseServices } from './firebaseClient';
 import type { ActivityConfig, ActivityType, Day } from '../types';
+import { normalizeDay } from '../domain/entries';
 
 export type SyncedData = {
   currentDay: Day | null;
@@ -41,7 +42,8 @@ function parseSyncedData(data: unknown): SyncedData | null {
   const customActivities = optionalList<ActivityConfig>(extra.customActivities);
   const countOnlyTimers = optionalList<ActivityType>(extra.countOnlyTimers);
   if (customActivities === null || countOnlyTimers === null) return null;
-  return { currentDay: data.currentDay as Day | null, history: data.history as Day[], customActivities, countOnlyTimers };
+  const currentDay = data.currentDay === null ? null : normalizeDay(data.currentDay as Day);
+  return { currentDay, history: (data.history as Day[]).map(normalizeDay), customActivities, countOnlyTimers };
 }
 
 /** Whether this build was given Firebase configuration at all. */

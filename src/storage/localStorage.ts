@@ -1,4 +1,5 @@
 import type { Day, Settings } from '../types';
+import { normalizeDay } from '../domain/entries';
 
 const KEYS = {
   settings: 'babystats:settings',
@@ -33,7 +34,8 @@ export function saveSettings(settings: Settings): void {
 }
 
 export function loadCurrentDay(): Day | null {
-  return parseOr<Day | null>(localStorage.getItem(KEYS.currentDay), null);
+  const day = parseOr<Day | null>(localStorage.getItem(KEYS.currentDay), null);
+  return day && typeof day === 'object' ? normalizeDay(day) : null;
 }
 
 export function saveCurrentDay(day: Day | null): void {
@@ -46,7 +48,7 @@ export function saveCurrentDay(day: Day | null): void {
 
 export function loadHistory(): Day[] {
   const history = parseOr<Day[]>(localStorage.getItem(KEYS.history), []);
-  return Array.isArray(history) ? history : [];
+  return Array.isArray(history) ? history.map(normalizeDay) : [];
 }
 
 export function saveHistory(history: Day[]): void {

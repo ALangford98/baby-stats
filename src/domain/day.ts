@@ -3,7 +3,7 @@ import { toLocalDateString } from '../utils/time';
 
 function createEmptyLog(activity: ActivityConfig): ActivityLog {
   return activity.kind === 'counter'
-    ? { kind: 'counter', type: activity.type, count: 0 }
+    ? { kind: 'counter', type: activity.type, count: 0, entries: [] }
     : { kind: 'timer', type: activity.type, sessions: [] };
 }
 
@@ -18,6 +18,7 @@ export function createEmptyDay(startedAt: string, activities: ActivityConfig[]):
     date: toLocalDateString(startedAt),
     startedAt,
     endedAt: null,
+    bedAt: null,
     logs,
     report: null,
     reportSource: null,

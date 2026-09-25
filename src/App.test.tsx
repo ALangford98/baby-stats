@@ -302,7 +302,7 @@ describe('App: built-in activities added after a day started', () => {
     render(<App />);
 
     expect(screen.getByRole('button', { name: /^feeding$/i })).toBeInTheDocument();
-    expect(persistedCurrentDay()!.logs.feeding).toEqual({ kind: 'counter', type: 'feeding', count: 0 });
+    expect(persistedCurrentDay()!.logs.feeding).toEqual({ kind: 'counter', type: 'feeding', count: 0, entries: [] });
   });
 });
 

@@ -78,6 +78,15 @@ describe('fetchSyncedData', () => {
     expect(order).toEqual(['signIn', 'getDoc']);
   });
 
+  it('normalizes days written by an older build (count without entries)', async () => {
+    const legacyDay = { date: '2026-09-24', startedAt: '2026-09-24T08:00:00.000Z', endedAt: null, report: null, reportSource: null,
+      logs: { feeding: { kind: 'counter', type: 'feeding', count: 1 } } };
+    getDocMock.mockResolvedValue({ exists: () => true, data: () => ({ currentDay: legacyDay, history: [legacyDay] }) });
+    const result = await fetchSyncedData('REALCODE01');
+    expect(result!.currentDay!.logs.feeding).toEqual({ kind: 'counter', type: 'feeding', count: 1, entries: [{ kind: 'untimed' }] });
+    expect(result!.history[0].bedAt).toBeNull();
+  });
+
   it('propagates errors (e.g. offline/network failure) rather than swallowing them', async () => {
     getDocMock.mockRejectedValue(new Error('network error'));
     await expect(fetchSyncedData('REALCODE01')).rejects.toThrow('network error');

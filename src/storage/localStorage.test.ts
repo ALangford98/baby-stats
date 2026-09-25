@@ -101,3 +101,16 @@ describe('corrupt storage does not brick the app', () => {
     expect(loadHistory()).toEqual([]);
   });
 });
+
+describe('legacy days on load', () => {
+  it('normalizes a stored count-only counter into untimed entries', () => {
+    localStorage.setItem(
+      'babystats:currentDay',
+      JSON.stringify({ date: '2026-09-24', startedAt: '2026-09-24T08:00:00.000Z', endedAt: null, report: null, reportSource: null,
+        logs: { feeding: { kind: 'counter', type: 'feeding', count: 2 } } }),
+    );
+    const day = loadCurrentDay()!;
+    expect(day.bedAt).toBeNull();
+    expect(day.logs.feeding).toEqual({ kind: 'counter', type: 'feeding', count: 2, entries: [{ kind: 'untimed' }, { kind: 'untimed' }] });
+  });
+});

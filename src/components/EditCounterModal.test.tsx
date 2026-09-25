@@ -11,7 +11,7 @@ const config = ACTIVITIES.find((a) => a.type === 'spitUp')!;
 
 describe('EditCounterModal', () => {
   it('prefills the current count and saves an edited value', async () => {
-    const log: CounterLog = { kind: 'counter', type: 'spitUp', count: 2 };
+    const log: CounterLog = { kind: 'counter', type: 'spitUp', count: 2, entries: [{ kind: 'untimed' }, { kind: 'untimed' }] };
     const onSave = vi.fn();
     render(<EditCounterModal config={config} log={log} onSave={onSave} onClose={vi.fn()} />);
 
@@ -26,7 +26,7 @@ describe('EditCounterModal', () => {
   });
 
   it('calls onClose when cancel is clicked', async () => {
-    const log: CounterLog = { kind: 'counter', type: 'spitUp', count: 2 };
+    const log: CounterLog = { kind: 'counter', type: 'spitUp', count: 2, entries: [{ kind: 'untimed' }, { kind: 'untimed' }] };
     const onClose = vi.fn();
     render(<EditCounterModal config={config} log={log} onSave={vi.fn()} onClose={onClose} />);
 
@@ -35,13 +35,13 @@ describe('EditCounterModal', () => {
   });
 
   it('shows no delete action when onDelete is not provided (built-in activity)', () => {
-    const log: CounterLog = { kind: 'counter', type: 'spitUp', count: 2 };
+    const log: CounterLog = { kind: 'counter', type: 'spitUp', count: 2, entries: [{ kind: 'untimed' }, { kind: 'untimed' }] };
     render(<EditCounterModal config={config} log={log} onSave={vi.fn()} onClose={vi.fn()} />);
     expect(screen.queryByRole('button', { name: /delete this button/i })).not.toBeInTheDocument();
   });
 
   it('deletes after confirmation when onDelete is provided (custom activity)', async () => {
-    const log: CounterLog = { kind: 'counter', type: 'custom-abc12345', count: 2 };
+    const log: CounterLog = { kind: 'counter', type: 'custom-abc12345', count: 2, entries: [{ kind: 'untimed' }, { kind: 'untimed' }] };
     const customConfig = { type: 'custom-abc12345', label: 'Tummy medicine', kind: 'counter' as const, icon: 'Pill' as const };
     const onDelete = vi.fn();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -54,7 +54,7 @@ describe('EditCounterModal', () => {
   });
 
   it('does not delete when the confirmation is cancelled', async () => {
-    const log: CounterLog = { kind: 'counter', type: 'custom-abc12345', count: 2 };
+    const log: CounterLog = { kind: 'counter', type: 'custom-abc12345', count: 2, entries: [{ kind: 'untimed' }, { kind: 'untimed' }] };
     const customConfig = { type: 'custom-abc12345', label: 'Tummy medicine', kind: 'counter' as const, icon: 'Pill' as const };
     const onDelete = vi.fn();
     vi.spyOn(window, 'confirm').mockReturnValue(false);

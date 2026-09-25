@@ -25,7 +25,7 @@ describe('createEmptyDay', () => {
     for (const activity of ACTIVITIES) {
       const log = day.logs[activity.type];
       if (activity.kind === 'counter') {
-        expect(log).toEqual({ kind: 'counter', type: activity.type, count: 0 });
+        expect(log).toEqual({ kind: 'counter', type: activity.type, count: 0, entries: [] });
       } else {
         expect(log).toEqual({ kind: 'timer', type: activity.type, sessions: [] });
       }
@@ -187,7 +187,7 @@ describe('endDay', () => {
     let day = createEmptyDay(START, ACTIVITIES);
     day = incrementCounter(day, 'lightDiaper');
     const ended = endDay(day, '2026-09-23T18:00:00.000Z');
-    expect(ended.logs.lightDiaper).toEqual({ kind: 'counter', type: 'lightDiaper', count: 1 });
+    expect(ended.logs.lightDiaper).toMatchObject({ kind: 'counter', type: 'lightDiaper', count: 1 });
   });
 });
 
@@ -198,7 +198,7 @@ describe('addActivityToDay', () => {
   it('adds a zeroed counter log for a new custom counter activity', () => {
     const day = createEmptyDay(START, ACTIVITIES);
     const next = addActivityToDay(day, customCounter);
-    expect(next.logs['custom-abc12345']).toEqual({ kind: 'counter', type: 'custom-abc12345', count: 0 });
+    expect(next.logs['custom-abc12345']).toEqual({ kind: 'counter', type: 'custom-abc12345', count: 0, entries: [] });
   });
 
   it('adds a zeroed timer log for a new custom timer activity', () => {

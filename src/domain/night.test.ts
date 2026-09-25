@@ -32,6 +32,21 @@ describe('bedtime', () => {
     expect(defaultBedtime(day, t(24, 7))).toBe(t(23, 21, 15));
   });
 
+  it('forgot-to-tap guess stays before the night so 3am taps are not mistaken for bedtime', () => {
+    let day = createEmptyDay(START, ACTIVITIES);
+    day = incrementCounter(day, 'feeding', t(23, 21, 15));
+    day = incrementCounter(day, 'heavyDiaper', t(24, 1));
+    day = incrementCounter(day, 'heavyDiaper', t(24, 3));
+    const bed = defaultBedtime(day, t(24, 7));
+    expect(bed).toBe(t(23, 21, 15));
+    expect(nightEntryTimes(day.logs.heavyDiaper as CounterLog, bed, t(24, 7))).toEqual([t(24, 1), t(24, 3)]);
+  });
+
+  it('forgot-to-tap guess never precedes the start of a day begun late in the evening', () => {
+    const lateStart = t(23, 22, 40);
+    expect(defaultBedtime(createEmptyDay(lateStart, ACTIVITIES), t(24, 7))).toBe(lateStart);
+  });
+
   it('rejects a bedtime in the future or before the day started', () => {
     const day = createEmptyDay(START, ACTIVITIES);
     expect(validateBedtime(t(24, 8), day, t(24, 7))).toMatch(/future/i);

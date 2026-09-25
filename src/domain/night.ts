@@ -28,10 +28,15 @@ export function nightSessionCount(log: TimerLog, bedAt: string, wakeAt: string):
 
 /**
  * Best guess for "when did you go to bed?" when Gone to Bed was never
- * tapped: the latest thing logged before now, else 10pm on the day's date.
+ * tapped: the latest thing logged by 11pm on the day's date, else 10pm —
+ * never before the day started. It leans early on purpose: a 3am diaper
+ * tap must not be mistaken for bedtime, or the earlier night taps would
+ * vanish from the check-in and get logged a second time.
  */
 export function defaultBedtime(day: Day, now: string): string {
-  const nowMs = Date.parse(now);
+  const [y, m, d] = day.date.split('-').map(Number);
+  const startMs = Date.parse(day.startedAt);
+  const limit = Math.min(new Date(y, m - 1, d, 23, 0).getTime(), Date.parse(now));
   let latest = -Infinity;
   for (const log of Object.values(day.logs)) {
     const times =
@@ -40,12 +45,11 @@ export function defaultBedtime(day: Day, now: string): string {
         : log.sessions.flatMap((s) => (s.end ? [s.start, s.end] : [s.start]));
     for (const at of times) {
       const ms = Date.parse(at);
-      if (ms <= nowMs && ms > latest) latest = ms;
+      if (ms <= limit && ms > latest) latest = ms;
     }
   }
-  if (latest > -Infinity) return new Date(latest).toISOString();
-  const [y, m, d] = day.date.split('-').map(Number);
-  return new Date(y, m - 1, d, 22, 0).toISOString();
+  const guess = latest > -Infinity ? latest : new Date(y, m - 1, d, 22, 0).getTime();
+  return new Date(Math.min(Math.max(guess, startMs), Date.parse(now))).toISOString();
 }
 
 export function validateBedtime(bedAt: string, day: Day, now: string): string | null {

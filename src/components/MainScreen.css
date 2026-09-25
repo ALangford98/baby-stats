@@ -5,11 +5,39 @@
   padding: 16px;
 }
 
-.main-screen__end-day {
+.main-screen--night {
+  background: #1f2330;
+  color: #e6e6f0;
+  min-height: 100vh;
+}
+
+.main-screen--night .activity-button__main {
+  background: #2b3042;
+  color: #e6e6f0;
+  border-color: #3d4460;
+}
+
+.main-screen__footer {
   position: sticky;
   bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  background: inherit;
+}
+
+.main-screen__primary {
   width: 100%;
   padding: 16px;
   font-size: 1.1rem;
   font-weight: bold;
+}
+
+.main-screen__secondary {
+  align-self: center;
+  background: transparent;
+  border: none;
+  text-decoration: underline;
+  color: inherit;
 }

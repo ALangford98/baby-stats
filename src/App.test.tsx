@@ -30,6 +30,17 @@ function persistedCurrentDay(): Day | null {
   return raw ? (JSON.parse(raw) as Day) : null;
 }
 
+function persistedHistory(): Day[] {
+  return JSON.parse(localStorage.getItem('babystats:history') ?? '[]') as Day[];
+}
+
+/** Gone to Bed → Woke Up → confirm the check-in unchanged. */
+async function sleepAndWake() {
+  await userEvent.click(screen.getByRole('button', { name: /gone to bed/i }));
+  await userEvent.click(screen.getByRole('button', { name: /woke up/i }));
+  await userEvent.click(screen.getByRole('button', { name: /looks right/i }));
+}
+
 describe('App: consent decline (Review Focus)', () => {
   it('stores nothing in localStorage if the user declines consent', async () => {
     render(<App />);
@@ -56,23 +67,24 @@ describe('App: full day flow', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /^nap$/i })); // stop the nap timer
 
-    await userEvent.click(screen.getByRole('button', { name: /end day/i }));
+    await sleepAndWake();
 
     expect(screen.getByText(/here's how today went/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+    expect(persistedHistory()).toHaveLength(1); // filed once, at wake-up — not again on Continue
 
     await userEvent.click(screen.getByRole('button', { name: /history/i }));
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
   });
 });
 
-describe('App: End Day persistence', () => {
+describe('App: Woke Up persistence', () => {
   // `finishDay()` then `setDayReport()` were two separate writes, and the
   // second closed over the pre-finishDay `day` — so what actually landed in
   // localStorage had endedAt: null and a still-open timer session, even though
   // the screen briefly looked right. Assert on what is on disk, not on screen.
-  it('persists the ended day (endedAt and closed timer sessions) to localStorage', async () => {
+  it('files the finished day (endedAt, bedAt, closed timers, report) into history and starts today at the wake time', async () => {
     render(<App />);
 
     await userEvent.click(screen.getByRole('button', { name: /ok|yes|agree/i }));
@@ -80,19 +92,22 @@ describe('App: End Day persistence', () => {
     await userEvent.click(screen.getByRole('button', { name: /confirm|start/i }));
 
     await userEvent.click(screen.getByRole('button', { name: /^nap$/i })); // start, leave running
-    await userEvent.click(screen.getByRole('button', { name: /end day/i }));
+    await sleepAndWake();
 
-    const stored = persistedCurrentDay()!;
-    expect(stored).not.toBeNull();
-    expect(stored.endedAt).not.toBeNull();
-
-    const napSessions = (stored.logs.nap as { sessions: { end: string | null }[] }).sessions;
-    expect(napSessions).toHaveLength(1);
-    expect(napSessions[0].end).not.toBeNull();
-
-    expect(stored.report).toBeTruthy();
-    expect(stored.reportSource).toBe('offline');
+    const finished = persistedHistory()[0];
+    expect(finished.endedAt).not.toBeNull();
+    expect(finished.bedAt).not.toBeNull();
+    const nap = finished.logs.nap as { sessions: { end: string | null }[] };
+    expect(nap.sessions).toHaveLength(1);
+    expect(nap.sessions.every((s) => s.end !== null)).toBe(true); // a nap left running is closed at wake-up
+    expect(finished.report).toBeTruthy();
+    expect(finished.reportSource).toBe('offline');
     expect(screen.getByText(/here's how today went/i)).toBeInTheDocument();
+
+    const today = persistedCurrentDay()!;
+    expect(today.startedAt).toBe(finished.endedAt);
+    expect(today.endedAt).toBeNull();
+    expect(today.bedAt).toBeNull();
   });
 
   it('carries endedAt and the closed session through into the history entry', async () => {
@@ -102,7 +117,7 @@ describe('App: End Day persistence', () => {
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     await userEvent.click(screen.getByRole('button', { name: /confirm|start/i }));
     await userEvent.click(screen.getByRole('button', { name: /^nap$/i }));
-    await userEvent.click(screen.getByRole('button', { name: /end day/i }));
+    await sleepAndWake();
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
 
     const history = JSON.parse(localStorage.getItem('babystats:history')!) as Day[];
@@ -358,8 +373,37 @@ describe('App: custom activities', () => {
     await userEvent.click(customButton);
     await userEvent.click(customButton);
 
-    await userEvent.click(screen.getByRole('button', { name: /end day/i }));
+    await sleepAndWake();
 
     expect(screen.getByText(/tummy medicine: 2/i)).toBeInTheDocument();
+  });
+});
+
+describe('App: night check-in', () => {
+  it('closes this phone\'s check-in when the other parent already confirmed it', async () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: /confirm|start/i }));
+    await userEvent.click(screen.getByRole('button', { name: /gone to bed/i }));
+    await userEvent.click(screen.getByRole('button', { name: /woke up/i }));
+    expect(screen.getByRole('dialog', { name: /good morning/i })).toBeInTheDocument();
+
+    const onRemoteChange = vi.mocked(watchSyncedData).mock.calls.at(-1)![1];
+    const partnersNewDay = createEmptyDay(new Date().toISOString(), ACTIVITIES);
+    act(() => onRemoteChange({ data: { currentDay: partnersNewDay, history: [], customActivities: [], countOnlyTimers: [] }, updatedAt: Date.now() + 1000 }));
+
+    expect(screen.queryByRole('dialog', { name: /good morning/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /gone to bed/i })).toBeInTheDocument();
+  });
+
+  it('shows the AI report button result on the finished (history) day', async () => {
+    // Guard against regressions where AI generation writes to the new current day.
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: /confirm|start/i }));
+    await sleepAndWake();
+    expect(screen.getByText(/here's how today went/i)).toBeInTheDocument();
+    expect(persistedHistory()[0].report).toMatch(/here's how today went/i);
+    expect(persistedCurrentDay()!.report).toBeNull();
   });
 });

@@ -6,7 +6,7 @@ import { createEmptyDay, incrementCounter } from '../domain/day';
 import { ACTIVITIES, combineActivities } from '../activities';
 
 describe('MainScreen', () => {
-  it('renders all seven activity buttons and an End Day button', () => {
+  it('renders all activity buttons and the Gone to Bed button', () => {
     const day = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES);
     render(
       <MainScreen
@@ -15,7 +15,9 @@ describe('MainScreen', () => {
         onTap={vi.fn()}
         onEditCounter={vi.fn()}
         onEditTimer={vi.fn()}
-        onEndDay={vi.fn()}
+        onGoToBed={vi.fn()}
+        onCancelBed={vi.fn()}
+        onWakeUp={vi.fn()}
         onAddActivity={vi.fn()}
         onDeleteActivity={vi.fn()}
       />,
@@ -23,7 +25,7 @@ describe('MainScreen', () => {
 
     expect(screen.getByRole('button', { name: /^light diaper$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^crying fit$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /end day/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /gone to bed/i })).toBeInTheDocument();
   });
 
   it('calls onTap with the right activity type when a button is tapped', async () => {
@@ -36,7 +38,9 @@ describe('MainScreen', () => {
         onTap={onTap}
         onEditCounter={vi.fn()}
         onEditTimer={vi.fn()}
-        onEndDay={vi.fn()}
+        onGoToBed={vi.fn()}
+        onCancelBed={vi.fn()}
+        onWakeUp={vi.fn()}
         onAddActivity={vi.fn()}
         onDeleteActivity={vi.fn()}
       />,
@@ -57,7 +61,9 @@ describe('MainScreen', () => {
         onTap={vi.fn()}
         onEditCounter={onEditCounter}
         onEditTimer={vi.fn()}
-        onEndDay={vi.fn()}
+        onGoToBed={vi.fn()}
+        onCancelBed={vi.fn()}
+        onWakeUp={vi.fn()}
         onAddActivity={vi.fn()}
         onDeleteActivity={vi.fn()}
       />,
@@ -69,24 +75,26 @@ describe('MainScreen', () => {
     expect(onEditCounter).toHaveBeenCalledWith('spitUp', [{ kind: 'exact', at: expect.any(String) }]);
   });
 
-  it('calls onEndDay when the End Day button is tapped', async () => {
+  it('offers Gone to Bed by day, and Woke Up / Not going to bed yet in night mode', async () => {
     const day = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES);
-    const onEndDay = vi.fn();
-    render(
-      <MainScreen
-        day={day}
-        activities={ACTIVITIES}
-        onTap={vi.fn()}
-        onEditCounter={vi.fn()}
-        onEditTimer={vi.fn()}
-        onEndDay={onEndDay}
-        onAddActivity={vi.fn()}
-        onDeleteActivity={vi.fn()}
-      />,
-    );
+    const onGoToBed = vi.fn();
+    const onCancelBed = vi.fn();
+    const onWakeUp = vi.fn();
+    const props = { activities: ACTIVITIES, onTap: vi.fn(), onEditCounter: vi.fn(), onEditTimer: vi.fn(), onAddActivity: vi.fn(), onDeleteActivity: vi.fn(), onGoToBed, onCancelBed, onWakeUp };
+    const { rerender, container } = render(<MainScreen day={day} {...props} />);
 
-    await userEvent.click(screen.getByRole('button', { name: /end day/i }));
-    expect(onEndDay).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole('button', { name: /gone to bed/i }));
+    expect(onGoToBed).toHaveBeenCalledTimes(1);
+
+    rerender(<MainScreen day={{ ...day, bedAt: '2026-09-23T22:30:00.000Z' }} {...props} />);
+    expect(container.firstChild).toHaveClass('main-screen--night');
+    expect(screen.queryByRole('button', { name: /gone to bed/i })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /woke up/i }));
+    await userEvent.click(screen.getByRole('button', { name: /not going to bed yet/i }));
+    expect(onWakeUp).toHaveBeenCalledTimes(1);
+    expect(onCancelBed).toHaveBeenCalledTimes(1);
+    // Activity buttons still work at night.
+    expect(screen.getByRole('button', { name: /^feeding$/i })).toBeEnabled();
   });
 });
 
@@ -101,7 +109,9 @@ describe('MainScreen: custom activities', () => {
         onTap={vi.fn()}
         onEditCounter={vi.fn()}
         onEditTimer={vi.fn()}
-        onEndDay={vi.fn()}
+        onGoToBed={vi.fn()}
+        onCancelBed={vi.fn()}
+        onWakeUp={vi.fn()}
         onAddActivity={vi.fn()}
         onDeleteActivity={vi.fn()}
       />,
@@ -119,7 +129,9 @@ describe('MainScreen: custom activities', () => {
         onTap={vi.fn()}
         onEditCounter={vi.fn()}
         onEditTimer={vi.fn()}
-        onEndDay={vi.fn()}
+        onGoToBed={vi.fn()}
+        onCancelBed={vi.fn()}
+        onWakeUp={vi.fn()}
         onAddActivity={onAddActivity}
         onDeleteActivity={vi.fn()}
       />,
@@ -145,7 +157,9 @@ describe('MainScreen: custom activities', () => {
         onTap={vi.fn()}
         onEditCounter={vi.fn()}
         onEditTimer={vi.fn()}
-        onEndDay={vi.fn()}
+        onGoToBed={vi.fn()}
+        onCancelBed={vi.fn()}
+        onWakeUp={vi.fn()}
         onAddActivity={vi.fn()}
         onDeleteActivity={vi.fn()}
       />,
@@ -173,7 +187,9 @@ describe('MainScreen: custom activities', () => {
         onTap={vi.fn()}
         onEditCounter={vi.fn()}
         onEditTimer={vi.fn()}
-        onEndDay={vi.fn()}
+        onGoToBed={vi.fn()}
+        onCancelBed={vi.fn()}
+        onWakeUp={vi.fn()}
         onAddActivity={vi.fn()}
         onDeleteActivity={onDeleteActivity}
       />,
@@ -202,7 +218,9 @@ describe('MainScreen: custom activities', () => {
         onTap={vi.fn()}
         onEditCounter={vi.fn()}
         onEditTimer={vi.fn()}
-        onEndDay={vi.fn()}
+        onGoToBed={vi.fn()}
+        onCancelBed={vi.fn()}
+        onWakeUp={vi.fn()}
         onAddActivity={vi.fn()}
         onDeleteActivity={vi.fn()}
       />,

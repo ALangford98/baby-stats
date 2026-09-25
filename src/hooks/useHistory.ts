@@ -29,5 +29,13 @@ export function useHistory() {
     });
   }, []);
 
-  return { history, addToHistory, replaceHistory, removeFromHistory };
+  const updateHistoryDay = useCallback((startedAt: string, update: (day: Day) => Day) => {
+    setHistoryState((prev) => {
+      const next = prev.map((day) => (day.startedAt === startedAt ? update(day) : day));
+      saveHistory(next);
+      return next;
+    });
+  }, []);
+
+  return { history, addToHistory, replaceHistory, removeFromHistory, updateHistoryDay };
 }

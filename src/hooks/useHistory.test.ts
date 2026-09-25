@@ -41,4 +41,12 @@ describe('useHistory', () => {
     const { result: reloaded } = renderHook(() => useHistory());
     expect(reloaded.current.history).toEqual([dayB]);
   });
+
+  it('updates one history day in place', () => {
+    const { result } = renderHook(() => useHistory());
+    const day = createEmptyDay('2026-09-23T08:00:00.000Z', ACTIVITIES);
+    act(() => result.current.addToHistory(day));
+    act(() => result.current.updateHistoryDay(day.startedAt, (d) => ({ ...d, report: 'AI text', reportSource: 'ai' })));
+    expect(result.current.history[0]).toMatchObject({ report: 'AI text', reportSource: 'ai' });
+  });
 });

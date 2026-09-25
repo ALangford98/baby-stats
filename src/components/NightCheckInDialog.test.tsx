@@ -59,4 +59,15 @@ describe('NightCheckInDialog', () => {
     expect(screen.getByText(/nap: 0 sessions overnight/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /more nap/i })).not.toBeInTheDocument();
   });
+
+  it('keeps the exact tapped bedtime (with seconds) rather than the minute shown in the box', async () => {
+    const started = new Date(2026, 8, 23, 22, 30, 10).toISOString();
+    const bed = new Date(2026, 8, 23, 22, 30, 50).toISOString();
+    const onConfirm = vi.fn();
+    render(<NightCheckInDialog day={goToBed(createEmptyDay(started, ACTIVITIES), bed)} activities={ACTIVITIES} now={NOW} onConfirm={onConfirm} onCancel={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /looks right/i }));
+
+    expect(onConfirm).toHaveBeenCalledWith(bed, expect.any(Object));
+  });
 });

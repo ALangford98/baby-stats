@@ -13,7 +13,9 @@ type MainScreenProps = {
   onTap: (type: ActivityType) => void;
   onEditCounter: (type: ActivityType, entries: CounterEntry[]) => void;
   onEditTimer: (type: ActivityType, sessions: TimerSession[], useTimer: boolean) => void;
-  onEndDay: () => void;
+  onGoToBed: () => void;
+  onCancelBed: () => void;
+  onWakeUp: () => void;
   onAddActivity: (activity: ActivityConfig) => void;
   onDeleteActivity: (type: ActivityType) => void;
 };
@@ -24,7 +26,9 @@ export function MainScreen({
   onTap,
   onEditCounter,
   onEditTimer,
-  onEndDay,
+  onGoToBed,
+  onCancelBed,
+  onWakeUp,
   onAddActivity,
   onDeleteActivity,
 }: MainScreenProps) {
@@ -35,7 +39,7 @@ export function MainScreen({
   const isCustom = (type: ActivityType) => type.startsWith('custom-');
 
   return (
-    <div>
+    <div className={day.bedAt ? 'main-screen main-screen--night' : 'main-screen'}>
       <div className="main-screen__grid">
         {activities
           // An activity config can briefly have no log on the current day
@@ -53,9 +57,27 @@ export function MainScreen({
           ))}
         <AddActivityButton onClick={() => setAddingActivity(true)} />
       </div>
-      <button type="button" className="main-screen__end-day" onClick={onEndDay}>
-        End Day
-      </button>
+      <div className="main-screen__footer">
+        {day.bedAt ? (
+          <>
+            <button type="button" className="main-screen__primary" onClick={onWakeUp}>
+              Woke Up
+            </button>
+            <button type="button" className="main-screen__secondary" onClick={onCancelBed}>
+              Not going to bed yet
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="main-screen__primary" onClick={onGoToBed}>
+              Gone to Bed
+            </button>
+            <button type="button" className="main-screen__secondary" onClick={onWakeUp}>
+              Woke Up
+            </button>
+          </>
+        )}
+      </div>
       {editingConfig && editingLog?.kind === 'counter' && (
         <EditCounterModal
           config={editingConfig}

@@ -24,8 +24,12 @@ function loggedCounts(day: Day, activities: ActivityConfig[], bedAt: string, now
 // Shows what was actually tapped overnight before anything is added, so a
 // half-asleep 3am diaper change isn't logged twice in the morning.
 export function NightCheckInDialog({ day, activities, now, onConfirm, onCancel }: NightCheckInDialogProps) {
-  const [bedInput, setBedInput] = useState(() => toLocalInputValue(day.bedAt ?? defaultBedtime(day, now)));
-  const bedAt = bedInput ? fromLocalInputValue(bedInput) : '';
+  // The box only holds whole minutes; until it is edited, use the exact
+  // original time, or a bedtime in the day's first minute reads as "before
+  // the day started".
+  const [initialBedAt] = useState(() => day.bedAt ?? defaultBedtime(day, now));
+  const [bedInput, setBedInput] = useState(() => toLocalInputValue(initialBedAt));
+  const bedAt = !bedInput ? '' : bedInput === toLocalInputValue(initialBedAt) ? initialBedAt : fromLocalInputValue(bedInput);
   const error = bedAt ? validateBedtime(bedAt, day, now) : 'Enter a bedtime.';
   const [targets, setTargets] = useState<NightTargets>(() => loggedCounts(day, activities, day.bedAt ?? defaultBedtime(day, now), now));
 

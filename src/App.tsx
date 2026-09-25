@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ActivityConfig, ActivityType, Day, TimerSession } from './types';
 import { ACTIVITIES, combineActivities } from './activities';
-import { addActivityToDay, logInstantSession } from './domain/day';
+import { addActivityToDay, createEmptyDay, endDay, logInstantSession } from './domain/day';
+import { applyNightCheckIn, cancelBed, goToBed, type NightTargets } from './domain/night';
 import { AppHeader } from './components/AppHeader';
 import { ConsentModal } from './components/ConsentModal';
 import { RecoveryCodeStep } from './components/RecoveryCodeStep';
@@ -11,6 +12,7 @@ import { ReportScreen } from './components/ReportScreen';
 import { HistoryScreen } from './components/HistoryScreen';
 import { HistoryDetail } from './components/HistoryDetail';
 import { JoinSessionDialog } from './components/JoinSessionDialog';
+import { NightCheckInDialog } from './components/NightCheckInDialog';
 import { SettingsScreen } from './components/SettingsScreen';
 import { useDayState } from './hooks/useDayState';
 import { useSettings } from './hooks/useSettings';
@@ -88,7 +90,13 @@ function Tracker() {
   const [restoreError, setRestoreError] = useState<string | null>(null);
 
   const { settings, updateSettings } = useSettings();
-  const { history, addToHistory, replaceHistory, removeFromHistory } = useHistory();
+  const { history, addToHistory, replaceHistory, removeFromHistory, updateHistoryDay } = useHistory();
+
+  // The check-in belongs to the day it was opened for. If the other parent
+  // confirms first, sync replaces the current day and this closes itself.
+  const [checkInFor, setCheckInFor] = useState<string | null>(null);
+  const [reportDayId, setReportDayId] = useState<string | null>(null);
+  const reportDay = history.find((d) => d.startedAt === reportDayId) ?? null;
 
   // A share link (`?join=CODE`) asks to join someone else's session. Opening
   // your own link is a no-op, so only a different code is worth confirming.
@@ -180,34 +188,34 @@ function Tracker() {
     }
   }
 
-  function handleEndDay() {
-    const ended = dayState.finishDay();
-    // One write, not two: `setDayReport` closes over the pre-`finishDay` `day`,
-    // so calling it here would persist a stale copy over what `finishDay` just
-    // saved — losing `endedAt` and the closed timer sessions on disk.
-    dayState.replaceDay({ ...ended, report: generateOfflineReport(ended, activities), reportSource: 'offline' });
+  // One state update: yesterday is finished and filed into history, and today
+  // starts at the wake time. Synced state never shows a half-finished night.
+  function handleWakeConfirm(bedAt: string, targets: NightTargets) {
+    const day = dayState.day;
+    if (!day) return;
+    const wakeAt = new Date().toISOString();
+    const ended = endDay(applyNightCheckIn(day, bedAt, wakeAt, targets), wakeAt);
+    const finished = { ...ended, report: generateOfflineReport(ended, activities), reportSource: 'offline' as const };
+    addToHistory(finished);
+    dayState.replaceDay(createEmptyDay(wakeAt, activities));
+    setCheckInFor(null);
+    setReportDayId(finished.startedAt);
     setAiError(null);
     setScreen('report');
   }
 
   async function handleGenerateAi() {
-    if (!dayState.day) return;
+    if (!reportDay) return;
     setAiLoading(true);
     setAiError(null);
     try {
-      const text = await generateAiReport(dayState.day, settings, activities);
-      dayState.setDayReport(text, 'ai');
+      const text = await generateAiReport(reportDay, settings, activities);
+      updateHistoryDay(reportDay.startedAt, (d) => ({ ...d, report: text, reportSource: 'ai' }));
     } catch (err) {
       setAiError(err instanceof Error ? err.message : 'AI report generation failed.');
     } finally {
       setAiLoading(false);
     }
-  }
-
-  function handleContinueFromReport() {
-    if (dayState.day) addToHistory(dayState.day);
-    dayState.clearDay();
-    setScreen('startTime');
   }
 
   // History/Settings are reachable both while a day is running and while
@@ -291,16 +299,16 @@ function Tracker() {
     return <HistoryDetail day={selectedHistoryDay} activities={activities} onBack={() => setScreen('history')} />;
   }
 
-  if (screen === 'report' && dayState.day) {
+  if (screen === 'report' && reportDay) {
     return (
       <ReportScreen
-        day={dayState.day}
+        day={reportDay}
         activities={activities}
         settings={settings}
         onGenerateAi={handleGenerateAi}
         aiLoading={aiLoading}
         aiError={aiError}
-        onContinue={handleContinueFromReport}
+        onContinue={() => setScreen(dayState.day ? 'main' : 'startTime')}
       />
     );
   }
@@ -324,7 +332,9 @@ function Tracker() {
             const others = settings.countOnlyTimers.filter((t) => t !== type);
             updateSettings({ countOnlyTimers: useTimer ? others : [...others, type] });
           }}
-          onEndDay={handleEndDay}
+          onGoToBed={() => dayState.day && dayState.replaceDay(goToBed(dayState.day, new Date().toISOString()))}
+          onCancelBed={() => dayState.day && dayState.replaceDay(cancelBed(dayState.day))}
+          onWakeUp={() => setCheckInFor(dayState.day?.startedAt ?? null)}
           onAddActivity={(activity: ActivityConfig) => {
             dayState.addActivity(activity);
             updateSettings({ customActivities: [...settings.customActivities, activity] });
@@ -333,6 +343,15 @@ function Tracker() {
             updateSettings({ customActivities: settings.customActivities.filter((a) => a.type !== type) })
           }
         />
+        {checkInFor !== null && checkInFor === dayState.day.startedAt && (
+          <NightCheckInDialog
+            day={dayState.day}
+            activities={activities}
+            now={new Date().toISOString()}
+            onConfirm={handleWakeConfirm}
+            onCancel={() => setCheckInFor(null)}
+          />
+        )}
       </div>
     );
   }

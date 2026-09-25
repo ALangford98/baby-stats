@@ -14,6 +14,7 @@ import { HistoryDetail } from './components/HistoryDetail';
 import { JoinSessionDialog } from './components/JoinSessionDialog';
 import { NightCheckInDialog } from './components/NightCheckInDialog';
 import { PredictionCard } from './components/PredictionCard';
+import { InsightsScreen } from './components/InsightsScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { useDayState } from './hooks/useDayState';
 import { useSettings } from './hooks/useSettings';
@@ -32,7 +33,8 @@ type Screen =
   | 'report'
   | 'history'
   | 'historyDetail'
-  | 'settings';
+  | 'settings'
+  | 'insights';
 
 // Consent must be answered before any hook that touches localStorage runs
 // (useSettings, useDayState, useHistory, useCloudSync all read/write on
@@ -263,6 +265,7 @@ function Tracker() {
           recoveryCode={settings.recoveryCode}
           onSync={syncNow}
           onOpenHistory={() => setScreen('history')}
+          onOpenInsights={() => setScreen('insights')}
           onOpenSettings={() => setScreen('settings')}
         />
         <StartTimeModal defaultTime={new Date().toISOString()} onConfirm={(startedAt) => { dayState.startDay(startedAt, activities); setScreen('main'); }} />
@@ -284,6 +287,10 @@ function Tracker() {
         syncStatus={syncStatus}
       />
     );
+  }
+
+  if (screen === 'insights') {
+    return <InsightsScreen days={patternDays} onClose={backToTracker} />;
   }
 
   if (screen === 'history') {
@@ -322,6 +329,7 @@ function Tracker() {
           recoveryCode={settings.recoveryCode}
           onSync={syncNow}
           onOpenHistory={() => setScreen('history')}
+          onOpenInsights={() => setScreen('insights')}
           onOpenSettings={() => setScreen('settings')}
         />
         <MainScreen
@@ -365,6 +373,7 @@ function Tracker() {
         recoveryCode={settings.recoveryCode}
         onSync={syncNow}
         onOpenHistory={() => setScreen('history')}
+        onOpenInsights={() => setScreen('insights')}
         onOpenSettings={() => setScreen('settings')}
       />
       <StartTimeModal defaultTime={new Date().toISOString()} onConfirm={(startedAt) => { dayState.startDay(startedAt, activities); setScreen('main'); }} />

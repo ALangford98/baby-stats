@@ -407,3 +407,14 @@ describe('App: night check-in', () => {
     expect(persistedCurrentDay()!.report).toBeNull();
   });
 });
+
+describe('App: insights', () => {
+  it('opens the Insights screen from the header', async () => {
+    saveSettings({ recoveryCode: 'ABCD123456', llmProvider: null, llmApiKey: null, customActivities: [], countOnlyTimers: [] });
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: /insights/i }));
+    expect(screen.getByRole('region', { name: /poops/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /back/i }));
+    expect(screen.getByLabelText(/start time/i)).toBeInTheDocument();
+  });
+});

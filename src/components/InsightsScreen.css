@@ -23,3 +23,49 @@
   border-color: #3d4460;
   color: #e6e6f0;
 }
+
+.insights-screen {
+  padding: 16px;
+}
+
+.insights-screen__note {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.insights-section {
+  margin-top: 20px;
+}
+
+.insight h3 {
+  margin: 12px 0 4px;
+  font-size: 0.95rem;
+}
+
+.hotspots {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  align-items: end;
+  gap: 2px;
+  height: 80px;
+}
+
+.hotspots__col {
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.hotspots__bar {
+  width: 100%;
+  min-height: 1px;
+  background: #5b7fd6;
+  border-radius: 4px 4px 0 0;
+}
+
+.hotspots__axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #666;
+}

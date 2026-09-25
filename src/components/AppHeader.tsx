@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { History, RefreshCw, Settings as SettingsIcon, Share2 } from 'lucide-react';
+import { ChartColumn, History, RefreshCw, Settings as SettingsIcon, Share2 } from 'lucide-react';
 import type { SyncResult } from '../hooks/useCloudSync';
 import { buildShareLink } from '../utils/recoveryCode';
 import './AppHeader.css';
@@ -8,10 +8,11 @@ type AppHeaderProps = {
   recoveryCode: string;
   onSync: () => Promise<SyncResult>;
   onOpenHistory: () => void;
+  onOpenInsights: () => void;
   onOpenSettings: () => void;
 };
 
-export function AppHeader({ recoveryCode, onSync, onOpenHistory, onOpenSettings }: AppHeaderProps) {
+export function AppHeader({ recoveryCode, onSync, onOpenHistory, onOpenInsights, onOpenSettings }: AppHeaderProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -53,9 +54,14 @@ export function AppHeader({ recoveryCode, onSync, onOpenHistory, onOpenSettings 
 
   return (
     <header className="app-header">
-      <button type="button" className="app-header__icon-button" aria-label="History" onClick={onOpenHistory}>
-        <History size={20} />
-      </button>
+      <div className="app-header__actions">
+        <button type="button" className="app-header__icon-button" aria-label="History" onClick={onOpenHistory}>
+          <History size={20} />
+        </button>
+        <button type="button" className="app-header__icon-button" aria-label="Insights" onClick={onOpenInsights}>
+          <ChartColumn size={20} />
+        </button>
+      </div>
       <div className="app-header__actions">
         {notice && (
           <span className="app-header__status" role="status">

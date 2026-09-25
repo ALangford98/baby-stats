@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeInsights } from './insights';
+import { computeInsights, predictNextPoop } from './insights';
 import { createEmptyDay, setCounterEntries } from './day';
 import { ACTIVITIES } from '../activities';
 import type { CounterEntry, Day } from '../types';
@@ -86,5 +86,30 @@ describe('computeInsights', () => {
   it('ignores untimed entries for timing but never crashes on them', () => {
     const days = [dayWith(23, [], [], [{ kind: 'untimed' }])];
     expect(computeInsights(days, iso(NOW)).poop.hotspots).toMatchObject({ status: 'insufficient', have: 0 });
+  });
+});
+
+describe('predictNextPoop', () => {
+  const history = steadyDays(); // 45-min delays, 4h gaps
+  const today = (feeds: number[], poops: number[]) => [dayWith(24, feeds, poops), ...history];
+
+  it('learning while there are too few feed→poop pairs', () => {
+    expect(predictNextPoop(computeInsights([dayWith(24, [at(24, 8)], [])], iso(NOW)))).toEqual({ state: 'learning', have: 0, need: 5 });
+  });
+
+  it('upcoming before the window, now inside it', () => {
+    const feedAt = at(24, 15, 30);
+    expect(predictNextPoop(computeInsights(today([feedAt], []), iso(at(24, 15, 40))))).toMatchObject({ state: 'upcoming', from: feedAt + 45 * MIN, to: feedAt + 45 * MIN, feedAt });
+    expect(predictNextPoop(computeInsights(today([feedAt], []), iso(at(24, 16, 15))))).toMatchObject({ state: 'now' });
+  });
+
+  it('done once a poop is logged after the last feed', () => {
+    const p = predictNextPoop(computeInsights(today([at(24, 15)], [at(24, 15, 40)]), iso(NOW)));
+    expect(p).toEqual({ state: 'done', poopAt: at(24, 15, 40), feedAt: at(24, 15) });
+  });
+
+  it('falls back to the usual gap once the window has passed', () => {
+    const p = predictNextPoop(computeInsights(today([at(24, 13)], [at(24, 12)]), iso(NOW)));
+    expect(p).toEqual({ state: 'gap', at: at(24, 16), median: 4 * 60 * MIN });
   });
 });

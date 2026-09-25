@@ -160,3 +160,26 @@ export function computeInsights(days: Day[], nowIso: string): Insights {
     feed: groupInsights(feeds, now),
   };
 }
+
+export type Prediction =
+  | { state: 'learning'; have: number; need: number }
+  | { state: 'done'; poopAt: number; feedAt: number }
+  | { state: 'upcoming' | 'now'; from: number; to: number; feedAt: number; p25: number; p75: number }
+  | { state: 'gap'; at: number; median: number }
+  | { state: 'none' };
+
+export function predictNextPoop(insights: Insights): Prediction {
+  const { poop, feed, now } = insights;
+  if (poop.afterFeed.status === 'insufficient') return { state: 'learning', have: poop.afterFeed.have, need: poop.afterFeed.need };
+  const lastFeed = feed.last;
+  if (lastFeed && poop.last && poop.last.at >= lastFeed.at) return { state: 'done', poopAt: poop.last.at, feedAt: lastFeed.at };
+  if (lastFeed) {
+    const { p25, p75 } = poop.afterFeed;
+    const from = lastFeed.at + p25;
+    const to = lastFeed.at + p75;
+    if (now < from) return { state: 'upcoming', from, to, feedAt: lastFeed.at, p25, p75 };
+    if (now <= to) return { state: 'now', from, to, feedAt: lastFeed.at, p25, p75 };
+  }
+  if (poop.nextByGap !== null && poop.gap.status === 'ok') return { state: 'gap', at: poop.nextByGap, median: poop.gap.median };
+  return { state: 'none' };
+}

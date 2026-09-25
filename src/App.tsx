@@ -13,6 +13,7 @@ import { HistoryScreen } from './components/HistoryScreen';
 import { HistoryDetail } from './components/HistoryDetail';
 import { JoinSessionDialog } from './components/JoinSessionDialog';
 import { NightCheckInDialog } from './components/NightCheckInDialog';
+import { PredictionCard } from './components/PredictionCard';
 import { SettingsScreen } from './components/SettingsScreen';
 import { useDayState } from './hooks/useDayState';
 import { useSettings } from './hooks/useSettings';
@@ -97,6 +98,7 @@ function Tracker() {
   const [checkInFor, setCheckInFor] = useState<string | null>(null);
   const [reportDayId, setReportDayId] = useState<string | null>(null);
   const reportDay = history.find((d) => d.startedAt === reportDayId) ?? null;
+  const patternDays = useMemo(() => (dayState.day ? [dayState.day, ...history] : history), [dayState.day, history]);
 
   // A share link (`?join=CODE`) asks to join someone else's session. Opening
   // your own link is a no-op, so only a different code is worth confirming.
@@ -335,6 +337,7 @@ function Tracker() {
           onGoToBed={() => dayState.day && dayState.replaceDay(goToBed(dayState.day, new Date().toISOString()))}
           onCancelBed={() => dayState.day && dayState.replaceDay(cancelBed(dayState.day))}
           onWakeUp={() => setCheckInFor(dayState.day?.startedAt ?? null)}
+          predictionCard={<PredictionCard days={patternDays} />}
           onAddActivity={(activity: ActivityConfig) => {
             dayState.addActivity(activity);
             updateSettings({ customActivities: [...settings.customActivities, activity] });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { ActivityConfig, ActivityType, CounterEntry, CounterLog, Day, TimerLog, TimerSession } from '../types';
 import { AddActivityButton } from './AddActivityButton';
 import { AddActivityDialog } from './AddActivityDialog';
@@ -18,6 +18,7 @@ type MainScreenProps = {
   onWakeUp: () => void;
   onAddActivity: (activity: ActivityConfig) => void;
   onDeleteActivity: (type: ActivityType) => void;
+  predictionCard?: ReactNode;
 };
 
 export function MainScreen({
@@ -31,6 +32,7 @@ export function MainScreen({
   onWakeUp,
   onAddActivity,
   onDeleteActivity,
+  predictionCard,
 }: MainScreenProps) {
   const [editingType, setEditingType] = useState<ActivityType | null>(null);
   const [addingActivity, setAddingActivity] = useState(false);
@@ -40,6 +42,7 @@ export function MainScreen({
 
   return (
     <div className={day.bedAt ? 'main-screen main-screen--night' : 'main-screen'}>
+      {predictionCard}
       <div className="main-screen__grid">
         {activities
           // An activity config can briefly have no log on the current day

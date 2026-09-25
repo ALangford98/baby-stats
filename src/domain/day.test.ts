@@ -1,15 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ActivityConfig, TimerSession } from '../types';
-import {
-  addActivityToDay,
-  createEmptyDay,
-  endDay,
-  incrementCounter,
-  isTimerRunning,
-  setCounterCount,
-  setTimerSessions,
-  toggleTimer,
-} from './day';
+import { addActivityToDay, createEmptyDay, endDay, incrementCounter, isTimerRunning, setCounterCount, setTimerSessions, toggleTimer, setCounterEntries } from './day';
 import { ACTIVITIES } from '../activities';
 
 const START = '2026-09-23T08:00:00.000Z';
@@ -220,5 +211,27 @@ describe('addActivityToDay', () => {
     const day = createEmptyDay(START, ACTIVITIES);
     addActivityToDay(day, customCounter);
     expect(day.logs['custom-abc12345']).toBeUndefined();
+  });
+});
+
+describe('counter entries', () => {
+  const base = () => createEmptyDay('2026-09-24T08:00:00.000Z', ACTIVITIES);
+
+  it('incrementCounter records an exact timestamp', () => {
+    const day = incrementCounter(base(), 'feeding', '2026-09-24T09:30:00.000Z');
+    expect(day.logs.feeding).toEqual({ kind: 'counter', type: 'feeding', count: 1, entries: [{ kind: 'exact', at: '2026-09-24T09:30:00.000Z' }] });
+  });
+
+  it('setCounterEntries replaces the list and derives the count', () => {
+    const day = setCounterEntries(base(), 'feeding', [{ kind: 'untimed' }, { kind: 'exact', at: '2026-09-24T10:00:00.000Z' }]);
+    expect(day.logs.feeding).toMatchObject({ count: 2 });
+  });
+
+  it('setCounterCount lowers from the newest and raises with untimed entries', () => {
+    let day = incrementCounter(base(), 'feeding', '2026-09-24T09:00:00.000Z');
+    day = incrementCounter(day, 'feeding', '2026-09-24T10:00:00.000Z');
+    expect((setCounterCount(day, 'feeding', 1).logs.feeding as { entries: unknown[] }).entries).toEqual([{ kind: 'exact', at: '2026-09-24T09:00:00.000Z' }]);
+    expect((setCounterCount(day, 'feeding', 3).logs.feeding as { entries: unknown[] }).entries).toHaveLength(3);
+    expect(setCounterCount(day, 'feeding', 3).logs.feeding).toMatchObject({ count: 3 });
   });
 });

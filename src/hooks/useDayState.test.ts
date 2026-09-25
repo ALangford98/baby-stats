@@ -62,6 +62,17 @@ describe('useDayState', () => {
     expect(result.current.day!.reportSource).toBe('offline');
   });
 
+  it('records the time of each counter tap and can replace entries', () => {
+    const { result } = renderHook(() => useDayState());
+    act(() => result.current.startDay('2026-09-24T08:00:00.000Z', ACTIVITIES));
+    act(() => result.current.incrementCounter('feeding'));
+    const log = result.current.day!.logs.feeding as { entries: { kind: string }[] };
+    expect(log.entries).toEqual([{ kind: 'exact', at: expect.any(String) }]);
+
+    act(() => result.current.setCounterEntries('feeding', [{ kind: 'untimed' }, { kind: 'untimed' }]));
+    expect(result.current.day!.logs.feeding).toMatchObject({ count: 2 });
+  });
+
   it('clearDay resets to null and clears localStorage', () => {
     const { result } = renderHook(() => useDayState());
     act(() => result.current.startDay('2026-09-23T08:00:00.000Z', ACTIVITIES));

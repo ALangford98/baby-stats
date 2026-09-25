@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import type { ActivityConfig, ActivityType, Day, TimerSession } from '../types';
+import type { ActivityConfig, ActivityType, CounterEntry, Day, TimerSession } from '../types';
 import {
   addActivityToDay,
   createEmptyDay,
   endDay,
   incrementCounter as incrementCounterDomain,
   setCounterCount as setCounterCountDomain,
+  setCounterEntries as setCounterEntriesDomain,
   setTimerSessions as setTimerSessionsDomain,
   toggleTimer as toggleTimerDomain,
 } from '../domain/day';
@@ -27,7 +28,7 @@ export function useDayState() {
   const incrementCounter = useCallback(
     (type: ActivityType) => {
       if (!day) return;
-      persist(incrementCounterDomain(day, type));
+      persist(incrementCounterDomain(day, type, new Date().toISOString()));
     },
     [day, persist],
   );
@@ -36,6 +37,14 @@ export function useDayState() {
     (type: ActivityType, count: number) => {
       if (!day) return;
       persist(setCounterCountDomain(day, type, count));
+    },
+    [day, persist],
+  );
+
+  const setCounterEntries = useCallback(
+    (type: ActivityType, entries: CounterEntry[]) => {
+      if (!day) return;
+      persist(setCounterEntriesDomain(day, type, entries));
     },
     [day, persist],
   );
@@ -88,6 +97,7 @@ export function useDayState() {
     startDay,
     incrementCounter,
     setCounterCount,
+    setCounterEntries,
     toggleTimer,
     setTimerSessions,
     addActivity,

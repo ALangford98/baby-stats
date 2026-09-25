@@ -1,4 +1,5 @@
-import type { ActivityConfig, ActivityLog, ActivityType, Day, TimerLog, TimerSession } from '../types';
+import type { ActivityConfig, ActivityLog, ActivityType, CounterEntry, Day, TimerLog, TimerSession } from '../types';
+import { resizeEntries } from './entries';
 import { toLocalDateString } from '../utils/time';
 
 function createEmptyLog(activity: ActivityConfig): ActivityLog {
@@ -36,17 +37,26 @@ function updateLog(day: Day, type: ActivityType, update: (log: ActivityLog) => A
   return { ...day, logs: { ...day.logs, [type]: update(day.logs[type]) } };
 }
 
-export function incrementCounter(day: Day, type: ActivityType): Day {
+export function incrementCounter(day: Day, type: ActivityType, now: string = new Date().toISOString()): Day {
   return updateLog(day, type, (log) => {
     if (log.kind !== 'counter') throw new Error(`${type} is not a counter activity`);
-    return { ...log, count: log.count + 1 };
+    return { ...log, count: log.count + 1, entries: [...log.entries, { kind: 'exact', at: now }] };
   });
 }
 
+export function setCounterEntries(day: Day, type: ActivityType, entries: CounterEntry[]): Day {
+  return updateLog(day, type, (log) => {
+    if (log.kind !== 'counter') throw new Error(`${type} is not a counter activity`);
+    return { ...log, count: entries.length, entries: [...entries] };
+  });
+}
+
+// For callers that only know a number: lowering drops the newest entries,
+// raising adds entries whose time is unknown.
 export function setCounterCount(day: Day, type: ActivityType, count: number): Day {
   return updateLog(day, type, (log) => {
     if (log.kind !== 'counter') throw new Error(`${type} is not a counter activity`);
-    return { ...log, count };
+    return { ...log, count, entries: resizeEntries(log.entries, count) };
   });
 }
 
